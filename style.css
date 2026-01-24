@@ -1,0 +1,193 @@
+/* 基础样式重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 420px;
+}
+
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+/* 头像 */
+.avatar {
+    font-size: 60px;
+    margin-bottom: 15px;
+}
+
+h1 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+h2 {
+    color: #333;
+    font-size: 22px;
+    margin-bottom: 15px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+/* 验证框 */
+.verify-box {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 25px 20px;
+    margin-bottom: 25px;
+}
+
+.hint {
+    color: #555;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+#password-input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+    margin-bottom: 15px;
+}
+
+#password-input:focus {
+    border-color: #667eea;
+}
+
+#verify-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#verify-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+#verify-btn:active {
+    transform: translateY(0);
+}
+
+.error-msg {
+    color: #e74c3c;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+}
+
+/* 抖动动画 */
+.shake {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+/* 特点列表 */
+.features {
+    text-align: left;
+}
+
+.feature-item {
+    color: #555;
+    font-size: 14px;
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+}
+
+.feature-item:last-child {
+    border-bottom: none;
+}
+
+/* 成功页面 */
+.success-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+}
+
+.qr-hint {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.qrcode-box {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.qrcode-box img {
+    max-width: 200px;
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
+.tips {
+    color: #e74c3c;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.contact-info {
+    background: #fff3cd;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 13px;
+    color: #856404;
+}
+
+/* 响应式适配 */
+@media (max-width: 480px) {
+    .card {
+        padding: 30px 20px;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    .avatar {
+        font-size: 50px;
+    }
+}

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>荒哥说电影 - 影视解说教学</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 51.la 访问统计（免费）- 替换成你自己的统计代码 -->
+    <!-- <script charset="UTF-8" src="https://js.51.la/xxx.js"></script> -->
+</head>
+<body>
+    <div class="container">
+        <!-- 口令验证页面 -->
+        <div id="verify-page" class="page">
+            <div class="card">
+                <div class="avatar">🎬</div>
+                <h1>荒哥说电影</h1>
+                <p class="subtitle">专业影视解说教学 · 手把手带你入门</p>
+
+                <div class="verify-box">
+                    <p class="hint">请输入直播间口令获取联系方式</p>
+                    <input type="text" id="password-input" placeholder="输入口令..." autocomplete="off">
+                    <button id="verify-btn" onclick="verifyPassword()">验证口令</button>
+                    <p id="error-msg" class="error-msg"></p>
+                </div>
+
+                <div class="features">
+                    <div class="feature-item">✅ 零基础入门教学</div>
+                    <div class="feature-item">✅ 一对一答疑指导</div>
+                    <div class="feature-item">✅ 全套剪辑素材</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成功页面（显示二维码） -->
+        <div id="success-page" class="page" style="display: none;">
+            <div class="card">
+                <div class="success-icon">✅</div>
+                <h2>验证成功！</h2>
+                <p class="qr-hint">长按或扫描下方二维码添加荒哥</p>
+
+                <div class="qrcode-box">
+                    <img id="qrcode" src="qrcode.jpg" alt="企业微信二维码">
+                </div>
+
+                <p class="tips">添加时请备注：<strong>抖音直播</strong></p>
+
+                <div class="contact-info">
+                    <p>🎬 关注荒哥直播间，获取更多解说技巧</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 配置区域 ==========
+        const CONFIG = {
+            // 正确的口令
+            passwords: ['666'],
+            // 错误提示
+            errorMsg: '口令错误，请在直播间获取正确口令',
+            // 验证成功后的提示
+            successMsg: '验证成功！'
+        };
+        // ========== 配置结束 ==========
+
+        // 统计数据（使用 localStorage 本地存储）
+        function recordVisit() {
+            let stats = JSON.parse(localStorage.getItem('pageStats') || '{"visits":0,"verifies":0}');
+            stats.visits++;
+            localStorage.setItem('pageStats', JSON.stringify(stats));
+        }
+
+        function recordVerify() {
+            let stats = JSON.parse(localStorage.getItem('pageStats') || '{"visits":0,"verifies":0}');
+            stats.verifies++;
+            localStorage.setItem('pageStats', JSON.stringify(stats));
+        }
+
+        // 页面加载时记录访问
+        recordVisit();
+
+        // 验证口令
+        function verifyPassword() {
+            const input = document.getElementById('password-input').value.trim();
+            const errorEl = document.getElementById('error-msg');
+
+            // 检查口令是否正确
+            const isCorrect = CONFIG.passwords.some(pwd => pwd === input);
+
+            if (isCorrect) {
+                recordVerify();
+                document.getElementById('verify-page').style.display = 'none';
+                document.getElementById('success-page').style.display = 'block';
+                sessionStorage.setItem('verified', 'true');
+            } else {
+                errorEl.textContent = CONFIG.errorMsg;
+                errorEl.style.display = 'block';
+                document.getElementById('password-input').classList.add('shake');
+                setTimeout(() => {
+                    document.getElementById('password-input').classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        // 回车键验证
+        document.getElementById('password-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verifyPassword();
+            }
+        });
+
+        // 检查是否已验证过
+        if (sessionStorage.getItem('verified') === 'true') {
+            document.getElementById('verify-page').style.display = 'none';
+            document.getElementById('success-page').style.display = 'block';
+        }
+
+        // 查看统计数据（在控制台输入 showStats() 即可查看）
+        function showStats() {
+            const stats = JSON.parse(localStorage.getItem('pageStats') || '{"visits":0,"verifies":0}');
+            console.log('📊 访问统计：');
+            console.log('   总访问量：' + stats.visits);
+            console.log('   验证成功：' + stats.verifies);
+            console.log('   转化率：' + (stats.visits > 0 ? (stats.verifies / stats.visits * 100).toFixed(1) : 0) + '%');
+            return stats;
+        }
+    </script>
+</body>
+</html>
