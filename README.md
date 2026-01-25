@@ -70,8 +70,35 @@ const CONFIG = {
    - 点击 `Deploy`
    - 等待部署完成，会给你一个网址如：`https://my-landing-page-xxx.vercel.app`
 
-3. **绑定自定义域名（可选）**
-   - 在 Vercel 项目设置中可以绑定自己的域名
+3. **绑定自定义域名 hgsdy.cn**
+   
+   **步骤 A：在阿里云配置 DNS 解析**
+   - 登录阿里云 DNS 控制台：https://dns.console.aliyun.com
+   - 找到域名 `hgsdy.cn`，点击「解析设置」
+   - 添加以下两条记录：
+   
+   ```
+   记录1（主域名）:
+   记录类型: A
+   主机记录: @
+   记录值: 76.76.21.21
+   TTL: 10分钟
+   
+   记录2（www子域名）:
+   记录类型: CNAME
+   主机记录: www
+   记录值: cname.vercel-dns.com
+   TTL: 10分钟
+   ```
+   
+   **步骤 B：在 Vercel 添加域名**
+   - 进入 Vercel 项目 → Settings → Domains
+   - 输入 `hgsdy.cn`，点击 Add
+   - 输入 `www.hgsdy.cn`，点击 Add
+   - 等待 5-10 分钟 DNS 生效
+   - Vercel 会自动配置 SSL 证书（HTTPS）
+   
+   **完成！** 访问 https://hgsdy.cn 即可看到你的落地页
 
 ### 方法二：直接拖拽部署
 
