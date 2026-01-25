@@ -68,11 +68,11 @@ body {
 
 /* ========== 炸裂标题区 ========== */
 .hero-section {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .fire-emoji {
-    font-size: 40px;
+    font-size: 35px;
     animation: bounce 1s ease infinite;
     display: inline-block;
     filter: drop-shadow(0 0 20px rgba(255, 107, 107, 0.6));
@@ -84,13 +84,13 @@ body {
 }
 
 .main-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 900;
     background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCF7F, #4D96FF);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin: 6px 0;
+    margin: 5px 0;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     animation: titlePulse 2s ease infinite;
 }
@@ -103,9 +103,9 @@ body {
 .subtitle-box {
     display: flex;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
     flex-wrap: wrap;
-    margin: 8px 0;
+    margin: 6px 0;
 }
 
 .badge {
@@ -130,16 +130,16 @@ body {
 }
 
 .big-text {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     color: #333;
-    margin-top: 6px;
+    margin-top: 5px;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* ========== 超大二维码区 ========== */
 .qrcode-section {
-    margin: 18px 0;
+    margin: 15px 0;
     position: relative;
 }
 
@@ -166,8 +166,8 @@ body {
 }
 
 .scan-tip {
-    margin-top: 15px;
-    font-size: 15px;
+    margin-top: 12px;
+    font-size: 14px;
     color: #333;
     font-weight: 600;
     display: flex;
@@ -197,20 +197,20 @@ body {
 
 /* ========== 核心卖点 ========== */
 .benefits {
-    margin: 12px 0;
+    margin: 10px 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
 }
 
 .benefit-item {
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 8px 12px;
-    border-radius: 10px;
+    padding: 6px 10px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
+    gap: 6px;
+    font-size: 12px;
     font-weight: 600;
     color: #333;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -223,7 +223,7 @@ body {
 }
 
 .benefit-item .icon {
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .benefit-item .text {
@@ -234,15 +234,15 @@ body {
 /* ========== 紧迫感提示 ========== */
 .urgency-box {
     background: linear-gradient(135deg, #FFD93D, #FF6B6B);
-    padding: 10px 12px;
-    border-radius: 12px;
-    margin: 12px 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    margin: 10px 0;
     box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
 }
 
 .urgency-text {
     color: white;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
     margin: 0;
@@ -250,25 +250,25 @@ body {
 
 /* ========== 底部提示 ========== */
 .footer-tip {
-    margin-top: 12px;
-    padding: 10px 12px;
+    margin-top: 10px;
+    padding: 8px 10px;
     background: linear-gradient(135deg, #e9ecef, #f8f9fa);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .footer-tip p {
-    margin: 4px 0;
+    margin: 3px 0;
     color: #555;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .red-text {
     color: #FF6B6B;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .small-text {
-    font-size: 11px;
+    font-size: 10px;
     color: #777;
 }
 
