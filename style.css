@@ -32,8 +32,8 @@ body {
 
 .card {
     background: white;
-    border-radius: 30px;
-    padding: 45px 35px;
+    border-radius: 25px;
+    padding: 25px 25px;
     box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
     text-align: center;
     position: relative;
@@ -68,11 +68,11 @@ body {
 
 /* ========== 炸裂标题区 ========== */
 .hero-section {
-    margin-bottom: 35px;
+    margin-bottom: 20px;
 }
 
 .fire-emoji {
-    font-size: 80px;
+    font-size: 50px;
     animation: bounce 1s ease infinite;
     display: inline-block;
     filter: drop-shadow(0 0 20px rgba(255, 107, 107, 0.6));
@@ -84,13 +84,13 @@ body {
 }
 
 .main-title {
-    font-size: 36px;
+    font-size: 28px;
     font-weight: 900;
     background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCF7F, #4D96FF);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin: 15px 0;
+    margin: 8px 0;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     animation: titlePulse 2s ease infinite;
 }
@@ -103,17 +103,17 @@ body {
 .subtitle-box {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
-    margin: 20px 0;
+    margin: 12px 0;
 }
 
 .badge {
     background: linear-gradient(135deg, #FF6B6B, #FFD93D);
     color: white;
-    padding: 8px 18px;
-    border-radius: 20px;
-    font-size: 14px;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
     font-weight: bold;
     box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
     animation: badgeFloat 2s ease infinite;
@@ -130,35 +130,35 @@ body {
 }
 
 .big-text {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: bold;
     color: #333;
-    margin-top: 15px;
+    margin-top: 8px;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* ========== 超大二维码区 ========== */
 .qrcode-section {
-    margin: 35px 0;
+    margin: 20px 0;
     position: relative;
 }
 
 .qr-glow {
     position: relative;
     display: inline-block;
-    padding: 20px;
+    padding: 15px;
     background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCF7F, #4D96FF);
-    border-radius: 25px;
+    border-radius: 20px;
     box-shadow: 0 0 30px rgba(255, 107, 107, 0.4);
 }
 
 .qrcode-img {
     display: block;
-    width: 300px;
-    height: 300px;
-    border-radius: 15px;
+    width: 240px;
+    height: 240px;
+    border-radius: 12px;
     background: white;
-    padding: 15px;
+    padding: 12px;
 }
 
 .scan-line {
@@ -166,13 +166,13 @@ body {
 }
 
 .scan-tip {
-    margin-top: 20px;
-    font-size: 16px;
+    margin-top: 12px;
+    font-size: 14px;
     color: #333;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .pulse-dot {
@@ -196,20 +196,20 @@ body {
 
 /* ========== 核心卖点 ========== */
 .benefits {
-    margin: 30px 0;
+    margin: 15px 0;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 8px;
 }
 
 .benefit-item {
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 15px 20px;
-    border-radius: 15px;
+    padding: 10px 15px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 16px;
+    gap: 10px;
+    font-size: 14px;
     font-weight: 600;
     color: #333;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -222,7 +222,7 @@ body {
 }
 
 .benefit-item .icon {
-    font-size: 24px;
+    font-size: 18px;
 }
 
 .benefit-item .text {
@@ -233,93 +233,70 @@ body {
 /* ========== 紧迫感提示 ========== */
 .urgency-box {
     background: linear-gradient(135deg, #FFD93D, #FF6B6B);
-    padding: 20px;
-    border-radius: 20px;
-    margin: 25px 0;
+    padding: 12px 15px;
+    border-radius: 15px;
+    margin: 15px 0;
     box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
-    animation: urgencyShake 3s ease infinite;
-}
-
-@keyframes urgencyShake {
-    0%, 90%, 100% { transform: translateX(0); }
-    92%, 96% { transform: translateX(-5px); }
-    94%, 98% { transform: translateX(5px); }
-}
-
-.urgency-icon {
-    font-size: 40px;
-    margin-bottom: 10px;
-    animation: flash 1s ease infinite;
-}
-
-@keyframes flash {
-    0%, 50%, 100% { opacity: 1; }
-    25%, 75% { opacity: 0.5; }
 }
 
 .urgency-text {
     color: white;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.highlight {
-    font-size: 20px;
-    color: #FFD93D;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    padding: 0 5px;
+    margin: 0;
 }
 
 /* ========== 底部提示 ========== */
 .footer-tip {
-    margin-top: 25px;
-    padding: 20px;
+    margin-top: 15px;
+    padding: 12px 15px;
     background: linear-gradient(135deg, #e9ecef, #f8f9fa);
-    border-radius: 15px;
+    border-radius: 12px;
 }
 
 .footer-tip p {
-    margin: 8px 0;
+    margin: 5px 0;
     color: #555;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 .red-text {
     color: #FF6B6B;
-    font-size: 18px;
+    font-size: 15px;
 }
 
 .small-text {
-    font-size: 13px;
+    font-size: 12px;
     color: #777;
 }
 
 /* ========== 响应式适配 ========== */
 @media (max-width: 480px) {
     .card {
-        padding: 35px 25px;
+        padding: 20px 20px;
     }
 
     .main-title {
-        font-size: 30px;
+        font-size: 24px;
     }
 
     .fire-emoji {
-        font-size: 60px;
+        font-size: 40px;
     }
 
     .qrcode-img {
-        width: 280px;
-        height: 280px;
+        width: 220px;
+        height: 220px;
     }
 
     .badge {
-        font-size: 12px;
-        padding: 6px 14px;
+        font-size: 11px;
+        padding: 4px 10px;
     }
 
     .benefit-item {
-        font-size: 14px;
+        font-size: 13px;
+        padding: 8px 12px;
     }
 }
