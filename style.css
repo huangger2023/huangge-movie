@@ -149,44 +149,20 @@ body {
     padding: 20px;
     background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCF7F, #4D96FF);
     border-radius: 25px;
-    box-shadow: 0 0 40px rgba(255, 107, 107, 0.6);
-    animation: glowPulse 2s ease infinite;
-}
-
-@keyframes glowPulse {
-    0%, 100% {
-        box-shadow: 0 0 40px rgba(255, 107, 107, 0.6);
-        transform: scale(1);
-    }
-    50% {
-        box-shadow: 0 0 60px rgba(255, 107, 107, 0.8);
-        transform: scale(1.02);
-    }
+    box-shadow: 0 0 30px rgba(255, 107, 107, 0.4);
 }
 
 .qrcode-img {
     display: block;
-    width: 260px;
-    height: 260px;
+    width: 300px;
+    height: 300px;
     border-radius: 15px;
     background: white;
-    padding: 10px;
+    padding: 15px;
 }
 
 .scan-line {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    right: 20px;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, #FF6B6B, transparent);
-    animation: scanMove 2s linear infinite;
-}
-
-@keyframes scanMove {
-    0% { top: 20px; opacity: 0; }
-    50% { opacity: 1; }
-    100% { top: calc(100% - 20px); opacity: 0; }
+    display: none;
 }
 
 .scan-tip {
@@ -334,8 +310,8 @@ body {
     }
 
     .qrcode-img {
-        width: 220px;
-        height: 220px;
+        width: 280px;
+        height: 280px;
     }
 
     .badge {
