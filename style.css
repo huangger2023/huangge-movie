@@ -72,7 +72,7 @@ body {
 }
 
 .fire-emoji {
-    font-size: 50px;
+    font-size: 40px;
     animation: bounce 1s ease infinite;
     display: inline-block;
     filter: drop-shadow(0 0 20px rgba(255, 107, 107, 0.6));
@@ -84,13 +84,13 @@ body {
 }
 
 .main-title {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 900;
     background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCF7F, #4D96FF);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin: 8px 0;
+    margin: 6px 0;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     animation: titlePulse 2s ease infinite;
 }
@@ -103,9 +103,9 @@ body {
 .subtitle-box {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
-    margin: 12px 0;
+    margin: 8px 0;
 }
 
 .badge {
@@ -130,35 +130,35 @@ body {
 }
 
 .big-text {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     color: #333;
-    margin-top: 8px;
+    margin-top: 6px;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* ========== 超大二维码区 ========== */
 .qrcode-section {
-    margin: 20px 0;
+    margin: 18px 0;
     position: relative;
 }
 
 .qr-glow {
     position: relative;
     display: inline-block;
-    padding: 15px;
+    padding: 18px;
     background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCF7F, #4D96FF);
-    border-radius: 20px;
-    box-shadow: 0 0 30px rgba(255, 107, 107, 0.4);
+    border-radius: 22px;
+    box-shadow: 0 0 40px rgba(255, 107, 107, 0.6);
 }
 
 .qrcode-img {
     display: block;
-    width: 240px;
-    height: 240px;
-    border-radius: 12px;
+    width: 280px;
+    height: 280px;
+    border-radius: 15px;
     background: white;
-    padding: 12px;
+    padding: 14px;
 }
 
 .scan-line {
@@ -166,9 +166,10 @@ body {
 }
 
 .scan-tip {
-    margin-top: 12px;
-    font-size: 14px;
+    margin-top: 15px;
+    font-size: 15px;
     color: #333;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -196,20 +197,20 @@ body {
 
 /* ========== 核心卖点 ========== */
 .benefits {
-    margin: 15px 0;
+    margin: 12px 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .benefit-item {
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    padding: 10px 15px;
-    border-radius: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 14px;
+    gap: 8px;
+    font-size: 13px;
     font-weight: 600;
     color: #333;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -222,7 +223,7 @@ body {
 }
 
 .benefit-item .icon {
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .benefit-item .text {
@@ -233,15 +234,15 @@ body {
 /* ========== 紧迫感提示 ========== */
 .urgency-box {
     background: linear-gradient(135deg, #FFD93D, #FF6B6B);
-    padding: 12px 15px;
-    border-radius: 15px;
-    margin: 15px 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin: 12px 0;
     box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
 }
 
 .urgency-text {
     color: white;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: bold;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
     margin: 0;
@@ -249,25 +250,25 @@ body {
 
 /* ========== 底部提示 ========== */
 .footer-tip {
-    margin-top: 15px;
-    padding: 12px 15px;
+    margin-top: 12px;
+    padding: 10px 12px;
     background: linear-gradient(135deg, #e9ecef, #f8f9fa);
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 .footer-tip p {
-    margin: 5px 0;
+    margin: 4px 0;
     color: #555;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .red-text {
     color: #FF6B6B;
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .small-text {
-    font-size: 12px;
+    font-size: 11px;
     color: #777;
 }
 
@@ -286,8 +287,8 @@ body {
     }
 
     .qrcode-img {
-        width: 220px;
-        height: 220px;
+        width: 260px;
+        height: 260px;
     }
 
     .badge {
