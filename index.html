@@ -3,107 +3,355 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="荒哥说电影 - 专业影视解说教学，零基础入门，一对一答疑指导，全套剪辑素材">
-    <meta name="keywords" content="影视解说,电影解说,视频剪辑,抖音教学,荒哥说电影">
-    <meta name="author" content="荒哥说电影">
-    <link rel="canonical" href="https://hgsdy.cn">
-    <title>荒哥说电影 - 影视解说教学</title>
+    <meta name="description" content="CineFlow Pro 电影解说创作学习平台，提供从素材检索、AI 文案、配音到剪辑发布的全流程实战教学。">
+    <meta name="keywords" content="电影解说,AI文案,AI配音,TTS,短视频创作,创作教学">
+    <meta name="author" content="CineFlow Pro">
+    <title>CineFlow Pro | 电影解说创作学习平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <!-- 51.la 访问统计（免费）- 替换成你自己的统计代码 -->
-    <!-- <script charset="UTF-8" src="https://js.51.la/xxx.js"></script> -->
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <!-- 炸裂标题区 -->
-            <div class="hero-section">
-                <div class="fire-emoji">🔥</div>
-                <h1 class="main-title">荒哥说电影</h1>
-                <div class="subtitle-box">
-                    <span class="badge">🎬 影视解说教学</span>
+    <div class="background-orb orb-1" aria-hidden="true"></div>
+    <div class="background-orb orb-2" aria-hidden="true"></div>
+
+    <header class="hero reveal" id="top">
+        <div class="container hero-grid">
+            <div class="hero-copy">
+                <p class="eyebrow">电影解说系统学习平台</p>
+                <h1>CineFlow Pro<br><span>电影解说创作系统课</span></h1>
+                <p class="hero-lead">
+                    面向想系统学习电影解说的人群，提供从选题、文案、配音、画面匹配到剪辑发布的专业流程。
+                    目标是让新手也能稳定做出原创内容，并持续提升创作效率。
+                </p>
+                <div class="metrics" role="list" aria-label="关键指标">
+                    <article class="metric" role="listitem">
+                        <p class="metric-value">10 分钟</p>
+                        <p class="metric-label">结构化文案输出</p>
+                    </article>
+                    <article class="metric" role="listitem">
+                        <p class="metric-value">0 基础</p>
+                        <p class="metric-label">可按教程上手</p>
+                    </article>
+                    <article class="metric" role="listitem">
+                        <p class="metric-value">全流程</p>
+                        <p class="metric-label">创作链路打通</p>
+                    </article>
                 </div>
-                <p class="big-text">零基础小白也能学会！</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="#contact">立即咨询</a>
+                    <a class="btn btn-secondary" href="#resources">查看工具资源</a>
+                </div>
+                <p class="hero-note">当前活动学习价为 <strong>¥888</strong>（原价 <strong>¥1298</strong>），价格政策以咨询时说明为准。</p>
             </div>
 
-            <!-- 双收款码区 -->
-            <div class="qrcode-section">
-                <div class="payment-codes">
-                    <div class="payment-item">
-                        <div class="qr-glow wechat-glow">
-                            <img src="wechat-pay.jpg" alt="微信收款码" class="qrcode-img">
-                        </div>
-                        <span class="payment-label wechat-label">微信支付</span>
-                    </div>
-                    <div class="payment-item">
-                        <div class="qr-glow alipay-glow">
-                            <img src="alipay.jpg" alt="支付宝收款码" class="qrcode-img">
-                        </div>
-                        <span class="payment-label alipay-label">支付宝</span>
-                    </div>
-                </div>
-                <div class="scan-tip">
-                    <span class="pulse-dot"></span>
-                    <strong>长按识别二维码 · 选择支付方式</strong>
-                    <span class="pulse-dot"></span>
-                </div>
-            </div>
-
-            <!-- 核心卖点 -->
-            <div class="benefits">
-                <div class="benefit-item">
-                    <span class="icon">✅</span>
-                    <span class="text">零基础入门 · 3天出作品</span>
-                </div>
-                <div class="benefit-item">
-                    <span class="icon">✅</span>
-                    <span class="text">远程一对一 · 包教包会</span>
-                </div>
-                <div class="benefit-item">
-                    <span class="icon">✅</span>
-                    <span class="text">内部交流群 · 随时答疑</span>
-                </div>
-                <div class="benefit-item">
-                    <span class="icon">✅</span>
-                    <span class="text">完整步骤录屏 · 反复学习</span>
-                </div>
-            </div>
-
-            <!-- 紧迫感提示 -->
-            <div class="urgency-box">
-                <p class="urgency-text">成为正式学员前所有工具（不包含工具箱）都有试用</p>
-            </div>
-
-            <!-- 底部提示 -->
-            <div class="footer-tip">
-                <p>💬 添加时请备注：<strong class="red-text">抖音直播</strong></p>
-                <p class="small-text">🎯 关注荒哥直播间，获取更多解说技巧</p>
-            </div>
+            <aside class="hero-panel">
+                <h2>适合人群</h2>
+                <ul>
+                    <li>从零开始，想学习电影解说完整方法的新手创作者</li>
+                    <li>已在做短视频，想提升效率与原创稳定性的进阶创作者</li>
+                    <li>需要批量化生产内容、建立标准化流程的团队账号</li>
+                </ul>
+                <div class="panel-tag">AI 驱动 + 人工精修</div>
+            </aside>
         </div>
+    </header>
+
+    <main>
+        <section class="section reveal" id="workflow">
+            <div class="container">
+                <div class="section-head">
+                    <p class="eyebrow">方法体系</p>
+                    <h2>电影解说全流程方法图</h2>
+                    <p>将分散工具整合为可重复执行的创作链路，降低学习和执行门槛。</p>
+                </div>
+                <ol class="workflow-grid">
+                    <li>
+                        <span class="step-index">01</span>
+                        <h3>素材检索</h3>
+                        <p>快速定位影片与可用参考片段，建立选题库。</p>
+                    </li>
+                    <li>
+                        <span class="step-index">02</span>
+                        <h3>提取文案</h3>
+                        <p>输入电影名与剧情信息，生成结构化解说草稿。</p>
+                    </li>
+                    <li>
+                        <span class="step-index">03</span>
+                        <h3>AI 改写</h3>
+                        <p>按风格赛道重写文案，提高原创度与叙事一致性。</p>
+                    </li>
+                    <li>
+                        <span class="step-index">04</span>
+                        <h3>语音配音</h3>
+                        <p>本地 TTS 生成自然语音，支持情绪语调和多方言。</p>
+                    </li>
+                    <li>
+                        <span class="step-index">05</span>
+                        <h3>画面匹配</h3>
+                        <p>自动匹配叙事节点与画面节奏，减少手工对齐时间。</p>
+                    </li>
+                    <li>
+                        <span class="step-index">06</span>
+                        <h3>剪辑发布</h3>
+                        <p>完成成片输出与平台发布，形成可复用工作流。</p>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="section reveal" id="tools">
+            <div class="container">
+                <div class="section-head">
+                    <p class="eyebrow">核心工具矩阵</p>
+                    <h2>三个关键模块</h2>
+                    <p>所有能力均围绕“提效 + 原创 + 稳定输出”设计。</p>
+                </div>
+
+                <div class="tool-grid">
+                    <article class="card">
+                        <h3>CineFlow Pro 主工具箱</h3>
+                        <p>整合素材、文案、改写、配音、原片处理、剪辑等关键环节，一站式执行。</p>
+                        <ul class="feature-list">
+                            <li>10 分钟级文案产出，支持批量生产</li>
+                            <li>支持多种创作风格与赛道适配</li>
+                            <li>强调原创表达与个性化内容输出</li>
+                        </ul>
+                        <p class="tag">学习方案活动价：¥888（原价 ¥1298）</p>
+                    </article>
+
+                    <article class="card">
+                        <h3>本地克隆 TTS</h3>
+                        <p>端到端语音合成方案，面向解说配音场景进行优化。</p>
+                        <ul class="feature-list">
+                            <li>支持 32 种方言与情感语调</li>
+                            <li>可配置声音风格，语音自然度高</li>
+                            <li>支持试用，满意后购买</li>
+                        </ul>
+                        <p class="tag">价格：¥699/年</p>
+                    </article>
+
+                    <article class="card">
+                        <h3>智能画面匹配模块</h3>
+                        <p>对标文案内容自动匹配画面，主要用于改写创作阶段的效率提升。</p>
+                        <ul class="feature-list">
+                            <li>减少人工逐段对齐画面的重复工作</li>
+                            <li>便于统一片段节奏与镜头逻辑</li>
+                            <li>支持试用，满意后购买</li>
+                        </ul>
+                        <p class="tag">学员 ¥499/永久 | 外部 ¥699/永久</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section reveal" id="service">
+            <div class="container service-grid">
+                <div>
+                    <div class="section-head left">
+                        <p class="eyebrow">课程与服务</p>
+                        <h2>从入门到实战交付</h2>
+                    </div>
+                    <p class="service-lead">
+                        配套服务覆盖学习期与实操期：包含使用答疑、1 对 1 技术指导、专业团队远程支持、
+                        创作者交流学习群，以及每日直播创作技巧分享。
+                    </p>
+                </div>
+                <ul class="service-list">
+                    <li>完整教程体系：从基础认知到高效产出</li>
+                    <li>实时答疑支持：遇到问题可快速定位解决</li>
+                    <li>直播训练机制：持续吸收创作方法和案例</li>
+                    <li>团队持续迭代：功能与模型长期更新优化</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="section reveal" id="value">
+            <div class="container">
+                <div class="section-head">
+                    <p class="eyebrow">学习收益</p>
+                    <h2>你将获得的核心能力</h2>
+                </div>
+                <div class="result-grid">
+                    <article>
+                        <h3>流程化创作能力</h3>
+                        <p>形成可复制的方法，不依赖单点技巧，提升长期稳定输出能力。</p>
+                    </article>
+                    <article>
+                        <h3>原创内容表达能力</h3>
+                        <p>通过 AI 辅助与人工修订结合，提升内容差异化和表达完整度。</p>
+                    </article>
+                    <article>
+                        <h3>效率与质量平衡能力</h3>
+                        <p>在可控时间内完成高质量产出，适配个人和团队创作节奏。</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section reveal" id="pricing">
+            <div class="container">
+                <div class="section-head">
+                    <p class="eyebrow">学习方案与费用</p>
+                    <h2>透明定价，支持试用后决策</h2>
+                </div>
+                <div class="pricing-grid">
+                    <article class="price-card featured">
+                        <h3>系统学习方案</h3>
+                        <p class="price"><span>¥888</span> 活动价</p>
+                        <p class="muted">原价 ¥1298，适合从零到完整上手。</p>
+                    </article>
+                    <article class="price-card">
+                        <h3>文案模型算力</h3>
+                        <p class="price"><span>¥89</span> /月</p>
+                        <p class="muted">用于 AI 文案模型调用，按月灵活使用。</p>
+                    </article>
+                    <article class="price-card">
+                        <h3>本地克隆 TTS</h3>
+                        <p class="price"><span>¥699</span> /年</p>
+                        <p class="muted">支持试用，确认效果后再购买。</p>
+                    </article>
+                    <article class="price-card">
+                        <h3>智能画面匹配模块</h3>
+                        <p class="price"><span>¥499</span> 学员永久</p>
+                        <p class="muted">外部单独购买为 ¥699/永久。</p>
+                    </article>
+                </div>
+                <p class="pricing-note">说明：价格及活动政策可能随版本和服务内容调整，请以咨询结果为准。</p>
+            </div>
+        </section>
+
+        <section class="section reveal" id="resources">
+            <div class="container">
+                <div class="section-head">
+                    <p class="eyebrow">资源下载</p>
+                    <h2>工具链接与提取码</h2>
+                </div>
+                <div class="resource-grid">
+                    <article class="resource-card">
+                        <h3>本地克隆 TTS</h3>
+                        <p class="resource-link">https://pan.baidu.com/s/1zQmTY9hTHSmxfUv7AFgf1A?pwd=wutx</p>
+                        <div class="resource-actions">
+                            <a class="btn btn-secondary" target="_blank" rel="noopener noreferrer" href="https://pan.baidu.com/s/1zQmTY9hTHSmxfUv7AFgf1A?pwd=wutx">打开链接</a>
+                            <button class="btn btn-copy" type="button" data-copy="wutx">复制提取码 wutx</button>
+                        </div>
+                    </article>
+                    <article class="resource-card">
+                        <h3>智能画面匹配模块</h3>
+                        <p class="resource-link">https://pan.baidu.com/s/1muCFWnTqTEElVBrARYu7Tw?pwd=i3ir</p>
+                        <div class="resource-actions">
+                            <a class="btn btn-secondary" target="_blank" rel="noopener noreferrer" href="https://pan.baidu.com/s/1muCFWnTqTEElVBrARYu7Tw?pwd=i3ir">打开链接</a>
+                            <button class="btn btn-copy" type="button" data-copy="i3ir">复制提取码 i3ir</button>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section reveal" id="faq">
+            <div class="container">
+                <div class="section-head">
+                    <p class="eyebrow">FAQ</p>
+                    <h2>常见问题</h2>
+                </div>
+                <div class="faq-list">
+                    <details>
+                        <summary>没有剪辑基础，能不能学会？</summary>
+                        <p>可以。课程按零基础路径设计，先完成流程跑通，再逐步强化创作质量。</p>
+                    </details>
+                    <details>
+                        <summary>工具是否支持先试用？</summary>
+                        <p>本地克隆 TTS 与智能画面匹配模块均支持试用，满意后再购买。</p>
+                    </details>
+                    <details>
+                        <summary>服务是否包含答疑和指导？</summary>
+                        <p>包含。提供日常答疑、1 对 1 技术指导、远程支持及学习群交流。</p>
+                    </details>
+                    <details>
+                        <summary>后续是否持续更新？</summary>
+                        <p>会持续迭代，包含功能优化与 AI 模型训练更新。</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <section class="section reveal" id="contact">
+            <div class="container contact-panel">
+                <div>
+                    <p class="eyebrow">联系咨询</p>
+                    <h2>立即开启 AI 创作新阶段</h2>
+                    <p>加入 10 万+ 创作者的学习行列，用 AI 重塑电影解说创作方式。</p>
+                </div>
+                <div class="contact-items">
+                    <button class="contact-item" type="button" data-copy="hgjdy2099">
+                        <span>微信</span>
+                        <strong>hgjdy2099</strong>
+                        <em>点击复制</em>
+                    </button>
+                    <button class="contact-item" type="button" data-copy="1074549239">
+                        <span>QQ群</span>
+                        <strong>1074549239</strong>
+                        <em>点击复制</em>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-inner">
+            <p>内容声明：本页面内容用于电影解说创作学习交流，请遵守相关平台规范与法律法规。</p>
+            <p>© <span id="currentYear"></span> CineFlow Pro</p>
+        </div>
+    </footer>
+
+    <div class="sticky-cta" aria-label="快捷联系">
+        <a href="#contact" class="btn btn-primary">微信咨询</a>
+        <button class="btn btn-copy" type="button" data-copy="1074549239">复制QQ群号</button>
     </div>
 
     <script>
-        // 统计访问数据
-        function recordVisit() {
-            let stats = JSON.parse(localStorage.getItem('pageStats') || '{"visits":0}');
-            stats.visits++;
-            localStorage.setItem('pageStats', JSON.stringify(stats));
+        const revealItems = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.18 });
+
+        revealItems.forEach((item) => observer.observe(item));
+
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                const copied = document.execCommand('copy');
+                document.body.removeChild(input);
+                return copied;
+            }
         }
 
-        // 页面加载时记录访问
-        recordVisit();
-
-        // 查看统计数据（在控制台输入 showStats() 即可查看）
-        function showStats() {
-            const stats = JSON.parse(localStorage.getItem('pageStats') || '{"visits":0}');
-            console.log('📊 访问统计：');
-            console.log('   总访问量：' + stats.visits);
-            return stats;
-        }
-
-        // 添加页面加载动画
-        window.addEventListener('load', function() {
-            document.querySelector('.card').classList.add('loaded');
+        document.querySelectorAll('[data-copy]').forEach((item) => {
+            const originalHTML = item.innerHTML;
+            item.addEventListener('click', async () => {
+                const value = item.getAttribute('data-copy');
+                const success = await copyText(value);
+                item.innerHTML = success ? '已复制' : '复制失败，请手动复制';
+                setTimeout(() => {
+                    item.innerHTML = originalHTML;
+                }, 1300);
+            });
         });
+
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
     </script>
 </body>
 </html>

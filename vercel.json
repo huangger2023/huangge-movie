@@ -3,8 +3,14 @@
   "trailingSlash": false,
   "redirects": [
     {
-      "source": "/www",
-      "destination": "https://hgsdy.cn",
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.hgsdy.cn"
+        }
+      ],
+      "destination": "https://hgsdy.cn/$1",
       "permanent": true
     }
   ],
