@@ -1,0 +1,10 @@
+{
+  "name": "my-landing-page",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CineFlow Pro landing page with cloud admin backend",
+  "dependencies": {
+    "@vercel/blob": "1.0.2"
+  }
+}
+

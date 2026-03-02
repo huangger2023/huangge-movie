@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CineFlow Pro 网盘资源中心，统一查看工具下载链接与提取码。">
+    <title>网盘资源 | CineFlow Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/feature-page.css">
+</head>
+<body class="feature-page resources-page">
+    <div class="background-orb orb-1" aria-hidden="true"></div>
+    <div class="background-orb orb-2" aria-hidden="true"></div>
+
+    <header class="site-header">
+        <div class="container site-header-inner">
+            <a class="site-logo" href="/">CineFlow Pro</a>
+            <nav class="site-nav" aria-label="Main navigation">
+                <a class="site-nav-link" href="/" data-path="/">首页</a>
+                <a class="site-nav-link" href="/suite" data-path="/suite">主工具箱</a>
+                <a class="site-nav-link" href="/copywriting-trial" data-path="/copywriting-trial">文案试用</a>
+                <a class="site-nav-link" href="/tts-clone" data-path="/tts-clone">本地 TTS</a>
+                <a class="site-nav-link" href="/visual-match" data-path="/visual-match">画面匹配</a>
+                <a class="site-nav-link" href="/resources" data-path="/resources">网盘资源</a>
+                <a class="site-nav-link" href="/payment" data-path="/payment">支付通道</a>
+                <a class="site-nav-link" href="/contact" data-path="/contact">联系咨询</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="feature-main">
+        <div class="container">
+            <section class="feature-hero">
+                <p class="feature-eyebrow">下载中心</p>
+                <h1>网盘资源</h1>
+                <p>统一查看工具下载地址与提取码，支持一键复制，减少沟通与查找成本。</p>
+                <div class="feature-actions">
+                    <a class="btn btn-primary" href="/contact">联系咨询开通</a>
+                    <a class="btn btn-secondary" href="/payment">查看支付通道</a>
+                </div>
+            </section>
+
+            <section class="feature-block">
+                <h2>工具链接与提取码</h2>
+                <p class="resource-edit-tip">以下资源会优先读取云端最新配置，如未读取到则展示默认链接。</p>
+                <div class="resource-admin-entry">
+                    <button class="btn btn-primary" type="button" id="openLinkAdmin">网盘链接管理入口</button>
+                    <p class="resource-admin-hint">仅管理员使用：可新增、编辑、删除资源链接，保存后全站同步生效。</p>
+                </div>
+                <div class="resource-grid" id="resourceGrid"></div>
+            </section>
+
+            <section class="feature-block">
+                <h2>使用说明</h2>
+                <div class="feature-grid">
+                    <article class="feature-card">
+                        <h3>下载前先确认版本</h3>
+                        <p>建议先看对应模块详情页说明，确认系统环境与适配要求。</p>
+                    </article>
+                    <article class="feature-card">
+                        <h3>先试后开通更稳妥</h3>
+                        <p>文案、配音、画面模块可先试用，确认效果再正式开通。</p>
+                    </article>
+                    <article class="feature-card">
+                        <h3>遇到问题可直接咨询</h3>
+                        <p>下载失败、提取码失效或安装问题，均可联系咨询快速处理。</p>
+                    </article>
+                    <article class="feature-card">
+                        <h3>长期维护更新</h3>
+                        <p>资源会随版本迭代更新，建议定期查看本页获取最新入口。</p>
+                    </article>
+                </div>
+            </section>
+
+            <footer class="feature-footer">
+                <span>© <span id="featureCurrentYear"></span> CineFlow Pro</span>
+                <span>如需开通权限，请进入联系咨询页提交需求。</span>
+            </footer>
+        </div>
+    </main>
+
+    <div class="admin-modal" id="linkAdminModal" hidden>
+        <div class="admin-backdrop" data-close-admin></div>
+        <div class="admin-panel" role="dialog" aria-modal="true" aria-labelledby="linkAdminTitle">
+            <div class="admin-title-row">
+                <h3 id="linkAdminTitle">网盘链接管理</h3>
+                <button class="admin-close" type="button" data-close-admin>关闭</button>
+            </div>
+            <p class="admin-desc">修改、删除或新增资源入口后，点击“保存并应用”，将写入云端配置并全站生效。</p>
+            <div class="admin-rows" id="adminRows"></div>
+            <div class="admin-actions">
+                <button class="btn btn-secondary" type="button" id="addSoftwareRow">新增资源入口</button>
+                <button class="btn btn-primary" type="button" id="saveSoftwareLinks">保存并应用</button>
+                <button class="btn btn-copy" type="button" id="resetSoftwareLinks">恢复默认</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/software-links.js"></script>
+    <script src="/feature-page.js"></script>
+    <script>
+        const SOFTWARE_ADMIN_TOKEN_KEY = 'software_links_admin_token_v1';
+        const defaultLinks = normalizeLinks(window.SOFTWARE_LINKS || []);
+        let runtimeLinks = cloneLinks(defaultLinks);
+        let adminDraftLinks = [];
+
+        const resourceGrid = document.getElementById('resourceGrid');
+        const linkAdminModal = document.getElementById('linkAdminModal');
+        const adminRows = document.getElementById('adminRows');
+        const openLinkAdmin = document.getElementById('openLinkAdmin');
+        const addSoftwareRow = document.getElementById('addSoftwareRow');
+        const saveSoftwareLinks = document.getElementById('saveSoftwareLinks');
+        const resetSoftwareLinks = document.getElementById('resetSoftwareLinks');
+
+        function safeText(value, fallback = '') {
+            return typeof value === 'string' ? value.trim() : fallback;
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalizeLinks(list) {
+            if (!Array.isArray(list)) {
+                return [];
+            }
+            return list.map((item, index) => ({
+                title: safeText(item?.title, `软件入口 ${index + 1}`) || `软件入口 ${index + 1}`,
+                url: safeText(item?.url, ''),
+                code: safeText(item?.code, ''),
+                note: safeText(item?.note, '')
+            }));
+        }
+
+        function cloneLinks(list) {
+            return normalizeLinks(list).map((item) => ({ ...item }));
+        }
+
+        function getAdminToken() {
+            return localStorage.getItem(SOFTWARE_ADMIN_TOKEN_KEY) || '';
+        }
+
+        function setAdminToken(token) {
+            if (token) {
+                localStorage.setItem(SOFTWARE_ADMIN_TOKEN_KEY, token);
+            } else {
+                localStorage.removeItem(SOFTWARE_ADMIN_TOKEN_KEY);
+            }
+        }
+
+        async function requestAdminToken() {
+            const password = window.prompt('请输入后台管理密码');
+            if (!password) {
+                return '';
+            }
+
+            const res = await fetch('/api/admin-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+
+            if (!res.ok) {
+                window.alert('密码错误或后台未配置。');
+                return '';
+            }
+
+            const data = await res.json();
+            const token = typeof data.token === 'string' ? data.token : '';
+            setAdminToken(token);
+            return token;
+        }
+
+        async function ensureAdminToken(forceRenew = false) {
+            let token = forceRenew ? '' : getAdminToken();
+            if (!token) {
+                token = await requestAdminToken();
+            }
+            return token;
+        }
+
+        async function fetchLinks() {
+            try {
+                const res = await fetch('/api/software-links', { cache: 'no-store' });
+                if (!res.ok) {
+                    throw new Error('fetch failed');
+                }
+                const data = await res.json();
+                const links = normalizeLinks(data.links);
+                return links.length ? links : cloneLinks(defaultLinks);
+            } catch (error) {
+                return cloneLinks(defaultLinks);
+            }
+        }
+
+        async function saveLinksToCloud(links) {
+            let token = await ensureAdminToken();
+            if (!token) {
+                return { ok: false };
+            }
+
+            const payload = normalizeLinks(links);
+            const doSave = async (authToken) => fetch('/api/software-links', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ links: payload })
+            });
+
+            let res = await doSave(token);
+            if (res.status === 401) {
+                setAdminToken('');
+                token = await ensureAdminToken(true);
+                if (!token) {
+                    return { ok: false };
+                }
+                res = await doSave(token);
+            }
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                window.alert(data.error || '保存失败，请稍后重试。');
+                return { ok: false };
+            }
+
+            const data = await res.json();
+            return { ok: true, links: normalizeLinks(data.links) };
+        }
+
+        function renderLinks(links) {
+            if (!resourceGrid) {
+                return;
+            }
+
+            resourceGrid.innerHTML = '';
+            if (!links.length) {
+                const empty = document.createElement('p');
+                empty.className = 'muted';
+                empty.textContent = '暂未配置资源链接，请联系咨询获取入口。';
+                resourceGrid.appendChild(empty);
+                return;
+            }
+
+            links.forEach((entry) => {
+                const card = document.createElement('article');
+                card.className = 'resource-card';
+
+                const title = document.createElement('h3');
+                title.textContent = entry.title;
+                card.appendChild(title);
+
+                const linkLine = document.createElement('p');
+                linkLine.className = 'resource-link';
+                linkLine.textContent = entry.url || '请联系咨询获取链接';
+                card.appendChild(linkLine);
+
+                const actions = document.createElement('div');
+                actions.className = 'resource-actions';
+
+                const openBtn = document.createElement('a');
+                openBtn.className = 'btn btn-secondary';
+                openBtn.target = '_blank';
+                openBtn.rel = 'noopener noreferrer';
+                openBtn.textContent = '打开链接';
+                openBtn.href = entry.url || '#';
+                actions.appendChild(openBtn);
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'btn btn-copy';
+                copyBtn.type = 'button';
+                copyBtn.setAttribute('data-copy', entry.code || entry.url || '');
+                copyBtn.textContent = entry.code ? `复制提取码 ${entry.code}` : '复制链接';
+                actions.appendChild(copyBtn);
+
+                card.appendChild(actions);
+
+                if (entry.note) {
+                    const note = document.createElement('p');
+                    note.className = 'muted';
+                    note.textContent = entry.note;
+                    card.appendChild(note);
+                }
+
+                resourceGrid.appendChild(card);
+            });
+
+            if (typeof bindCopyButtons === 'function') {
+                bindCopyButtons();
+            }
+        }
+
+        function renderAdminRows() {
+            if (!adminRows) {
+                return;
+            }
+            adminRows.innerHTML = '';
+
+            if (!adminDraftLinks.length) {
+                adminRows.innerHTML = '<p class="muted">暂无资源入口，请点击“新增资源入口”。</p>';
+                return;
+            }
+
+            adminDraftLinks.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'admin-row';
+                row.innerHTML = `
+                    <div class="admin-row-head">
+                        <strong>入口 ${index + 1}</strong>
+                        <button class="btn btn-copy admin-delete" type="button" data-delete-index="${index}">删除</button>
+                    </div>
+                    <div class="admin-fields">
+                        <label class="admin-field">
+                            名称
+                            <input type="text" data-field="title" data-index="${index}" value="${escapeHtml(item.title)}">
+                        </label>
+                        <label class="admin-field">
+                            提取码
+                            <input type="text" data-field="code" data-index="${index}" value="${escapeHtml(item.code)}">
+                        </label>
+                        <label class="admin-field admin-field-full">
+                            网盘链接
+                            <input type="text" data-field="url" data-index="${index}" value="${escapeHtml(item.url)}">
+                        </label>
+                        <label class="admin-field admin-field-full">
+                            备注
+                            <textarea rows="2" data-field="note" data-index="${index}">${escapeHtml(item.note)}</textarea>
+                        </label>
+                    </div>
+                `;
+                adminRows.appendChild(row);
+            });
+        }
+
+        async function openAdminModal() {
+            const token = await ensureAdminToken();
+            if (!token) {
+                return;
+            }
+            adminDraftLinks = cloneLinks(runtimeLinks);
+            renderAdminRows();
+            linkAdminModal.hidden = false;
+            document.body.classList.add('modal-open');
+        }
+
+        function closeAdminModal() {
+            linkAdminModal.hidden = true;
+            document.body.classList.remove('modal-open');
+        }
+
+        openLinkAdmin?.addEventListener('click', () => {
+            void openAdminModal();
+        });
+
+        adminRows?.addEventListener('input', (event) => {
+            const target = event.target;
+            const index = Number(target.getAttribute('data-index'));
+            const field = target.getAttribute('data-field');
+            if (!Number.isInteger(index) || !field || !adminDraftLinks[index]) {
+                return;
+            }
+            adminDraftLinks[index][field] = target.value;
+        });
+
+        adminRows?.addEventListener('click', (event) => {
+            const deleteBtn = event.target.closest('[data-delete-index]');
+            if (!deleteBtn) {
+                return;
+            }
+            const index = Number(deleteBtn.getAttribute('data-delete-index'));
+            if (!Number.isInteger(index) || !adminDraftLinks[index]) {
+                return;
+            }
+            adminDraftLinks.splice(index, 1);
+            renderAdminRows();
+        });
+
+        addSoftwareRow?.addEventListener('click', () => {
+            adminDraftLinks.push({
+                title: `新资源入口 ${adminDraftLinks.length + 1}`,
+                url: '',
+                code: '',
+                note: ''
+            });
+            renderAdminRows();
+        });
+
+        saveSoftwareLinks?.addEventListener('click', async () => {
+            saveSoftwareLinks.disabled = true;
+            const originalText = saveSoftwareLinks.textContent;
+            saveSoftwareLinks.textContent = '保存中...';
+            const result = await saveLinksToCloud(adminDraftLinks);
+            if (result.ok) {
+                runtimeLinks = cloneLinks(result.links);
+                renderLinks(runtimeLinks);
+                closeAdminModal();
+            }
+            saveSoftwareLinks.textContent = originalText;
+            saveSoftwareLinks.disabled = false;
+        });
+
+        resetSoftwareLinks?.addEventListener('click', async () => {
+            if (!window.confirm('确认恢复为默认资源链接并覆盖云端？')) {
+                return;
+            }
+            const result = await saveLinksToCloud(defaultLinks);
+            if (result.ok) {
+                runtimeLinks = cloneLinks(result.links);
+                renderLinks(runtimeLinks);
+                closeAdminModal();
+            }
+        });
+
+        document.querySelectorAll('[data-close-admin]').forEach((item) => {
+            item.addEventListener('click', closeAdminModal);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !linkAdminModal.hidden) {
+                closeAdminModal();
+            }
+        });
+
+        fetchLinks().then((links) => {
+            runtimeLinks = cloneLinks(links);
+            renderLinks(runtimeLinks);
+        });
+    </script>
+</body>
+</html>

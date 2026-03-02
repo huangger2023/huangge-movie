@@ -12,6 +12,16 @@
       ],
       "destination": "https://hgsdy.cn/$1",
       "permanent": true
+    },
+    {
+      "source": "/wx",
+      "destination": "/pay/wechat",
+      "permanent": false
+    },
+    {
+      "source": "/zfb",
+      "destination": "/pay/alipay",
+      "permanent": false
     }
   ],
   "headers": [

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
+    <title>支付宝支付 | hgsdy.cn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/pay/pay.css">
+</head>
+<body class="pay-page">
+    <header class="pay-topbar">
+        <a class="pay-brand" href="/">CineFlow Pro</a>
+        <a class="pay-back" href="/">返回主页</a>
+    </header>
+
+    <main class="pay-shell">
+        <section class="pay-card">
+            <span class="badge">Secure Checkout</span>
+            <h1>支付宝支付</h1>
+            <p class="lead">请在支付宝内识别二维码完成支付，支付后可直接联系助理开通服务。</p>
+
+            <div class="qr-wrap alipay">
+                <img src="/alipay.jpg" alt="支付宝支付二维码">
+            </div>
+
+            <ol class="pay-steps">
+                <li>打开支付宝，长按二维码识别。</li>
+                <li>完成支付后，保留支付截图。</li>
+                <li>返回主页联系咨询，发送截图即可。</li>
+            </ol>
+
+            <p class="tip">如二维码无法识别，请返回主页联系微信获取备用支付方式。</p>
+
+            <div class="actions">
+                <a class="btn primary" href="/">返回主页</a>
+                <button class="btn" type="button" data-copy="https://hgsdy.cn/pay/alipay">复制本页链接</button>
+            </div>
+            <p class="footer-note">链接：hgsdy.cn/pay/alipay</p>
+        </section>
+    </main>
+
+    <script>
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (error) {
+                const input = document.createElement('input');
+                input.value = text;
+                document.body.appendChild(input);
+                input.select();
+                const copied = document.execCommand('copy');
+                document.body.removeChild(input);
+                return copied;
+            }
+        }
+
+        document.querySelectorAll('[data-copy]').forEach((item) => {
+            const original = item.textContent;
+            item.addEventListener('click', async () => {
+                const success = await copyText(item.getAttribute('data-copy'));
+                item.textContent = success ? '已复制' : '复制失败，请手动复制';
+                setTimeout(() => {
+                    item.textContent = original;
+                }, 1200);
+            });
+        });
+    </script>
+</body>
+</html>

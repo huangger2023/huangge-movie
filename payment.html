@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CineFlow Pro 支付中心，支持微信与支付宝独立支付页面。">
+    <title>支付通道 | CineFlow Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/feature-page.css">
+</head>
+<body class="feature-page">
+    <div class="background-orb orb-1" aria-hidden="true"></div>
+    <div class="background-orb orb-2" aria-hidden="true"></div>
+
+    <header class="site-header">
+        <div class="container site-header-inner">
+            <a class="site-logo" href="/">CineFlow Pro</a>
+            <nav class="site-nav" aria-label="Main navigation">
+                <a class="site-nav-link" href="/" data-path="/">首页</a>
+                <a class="site-nav-link" href="/suite" data-path="/suite">主工具箱</a>
+                <a class="site-nav-link" href="/copywriting-trial" data-path="/copywriting-trial">文案试用</a>
+                <a class="site-nav-link" href="/tts-clone" data-path="/tts-clone">本地 TTS</a>
+                <a class="site-nav-link" href="/visual-match" data-path="/visual-match">画面匹配</a>
+                <a class="site-nav-link" href="/resources" data-path="/resources">网盘资源</a>
+                <a class="site-nav-link" href="/payment" data-path="/payment">支付通道</a>
+                <a class="site-nav-link" href="/contact" data-path="/contact">联系咨询</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="feature-main">
+        <div class="container">
+            <section class="feature-hero">
+                <p class="feature-eyebrow">支付中心</p>
+                <h1>独立支付通道</h1>
+                <p>请按你的支付习惯选择通道，支付后可立即联系咨询开通对应服务。</p>
+                <div class="feature-actions">
+                    <a class="btn btn-primary" href="/contact">支付后提交开通</a>
+                    <a class="btn btn-secondary" href="/resources">查看网盘资源</a>
+                </div>
+            </section>
+
+            <section class="feature-block">
+                <h2>选择支付方式</h2>
+                <div class="feature-grid">
+                    <article class="feature-card">
+                        <h3>微信支付</h3>
+                        <p>进入独立微信支付页面，长按二维码识别完成支付。</p>
+                        <div class="resource-actions">
+                            <a class="btn btn-secondary" href="/pay/wechat" target="_blank" rel="noopener noreferrer">打开微信支付页</a>
+                            <button class="btn btn-copy" type="button" data-copy="https://hgsdy.cn/pay/wechat">复制链接</button>
+                        </div>
+                    </article>
+                    <article class="feature-card">
+                        <h3>支付宝支付</h3>
+                        <p>进入独立支付宝支付页面，长按二维码识别完成支付。</p>
+                        <div class="resource-actions">
+                            <a class="btn btn-secondary" href="/pay/alipay" target="_blank" rel="noopener noreferrer">打开支付宝支付页</a>
+                            <button class="btn btn-copy" type="button" data-copy="https://hgsdy.cn/pay/alipay">复制链接</button>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="feature-block">
+                <h2>支付后流程</h2>
+                <ol class="feature-steps">
+                    <li>完成支付并保留截图。</li>
+                    <li>进入联系咨询页，发送支付截图与登录邮箱。</li>
+                    <li>等待助理确认并完成授权开通。</li>
+                </ol>
+                <p class="feature-tip">提示：如支付页打开异常，请直接复制链接到对应 App 中打开。</p>
+            </section>
+
+            <footer class="feature-footer">
+                <span>© <span id="featureCurrentYear"></span> CineFlow Pro</span>
+                <span>支付完成后，请尽快到联系咨询页提交信息。</span>
+            </footer>
+        </div>
+    </main>
+
+    <script src="/feature-page.js"></script>
+</body>
+</html>
