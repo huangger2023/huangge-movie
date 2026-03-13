@@ -203,7 +203,8 @@
     line-height: 1.75;
 }
 
-.feature-page .optional-badge {
+.feature-page .optional-badge,
+.feature-page .core-badge {
     margin-bottom: 14px;
 }
 

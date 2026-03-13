@@ -547,6 +547,10 @@ h3 {
     flex-shrink: 0;
 }
 
+.module-card-top .core-badge {
+    flex-shrink: 0;
+}
+
 .module-side-card .text-link,
 .module-main-card .text-link {
     margin-top: 16px;
@@ -616,6 +620,29 @@ h3 {
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.98), rgba(251, 191, 36, 0.98));
     box-shadow: 0 10px 28px rgba(245, 158, 11, 0.24);
     border: 1px solid rgba(255, 214, 102, 0.9);
+}
+
+.core-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 7px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #fff7ed;
+    background: linear-gradient(135deg, rgba(194, 65, 12, 0.98), rgba(234, 88, 12, 0.98));
+    box-shadow: 0 12px 30px rgba(194, 65, 12, 0.26);
+    border: 1px solid rgba(251, 146, 60, 0.6);
+}
+
+.core-badge.is-soft {
+    color: #9a3412;
+    background: rgba(255, 237, 213, 0.96);
+    box-shadow: none;
+    border-color: rgba(251, 146, 60, 0.3);
 }
 
 .optional-badge.is-inline {
@@ -1811,6 +1838,12 @@ h3 {
     text-align: center;
 }
 
+.hero-chip-card.is-core {
+    background: linear-gradient(180deg, rgba(251, 146, 60, 0.16), rgba(194, 65, 12, 0.12));
+    border-color: rgba(251, 146, 60, 0.34);
+    box-shadow: 0 12px 28px rgba(194, 65, 12, 0.16);
+}
+
 .hero-chip-card strong {
     display: block;
     color: #fff;
@@ -1830,6 +1863,15 @@ h3 {
     font-size: 13px;
     line-height: 1.7;
     margin-top: 16px;
+}
+
+.pricing-card.is-core {
+    border-color: rgba(251, 146, 60, 0.4);
+    box-shadow: 0 20px 60px rgba(194, 65, 12, 0.14);
+}
+
+.pricing-card.is-core::before {
+    background: linear-gradient(135deg, rgba(194, 65, 12, 0.18), transparent 48%);
 }
 
 .hero-statement-box {
