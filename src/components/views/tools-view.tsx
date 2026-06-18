@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Agent 协作 hook：管理「联网搜索真实剧情」开关 + 搜索状态
+ * 使用 SSE 流式 API，分阶段推送 sources + fullPlot
  * 返回 plotContext（搜索结果）供生成时传入，以及搜索 UI 状态
  */
 function useAgentPlot() {
@@ -54,11 +55,13 @@ function useAgentPlot() {
   const [plotContext, setPlotContext] = React.useState<string | null>(null);
   const [sourceCount, setSourceCount] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
+  const [stage, setStage] = React.useState<string>("");
 
   const reset = () => {
     setPlotContext(null);
     setSourceCount(0);
     setError(null);
+    setStage("");
   };
 
   const search = async (movieTitle: string, genre?: string): Promise<string | null> => {
@@ -68,20 +71,91 @@ function useAgentPlot() {
     }
     setSearching(true);
     setError(null);
+    setStage("search");
     try {
-      const res = await fetch("/api/agent/search", {
+      const res = await fetch("/api/agent/search/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ movieTitle: movieTitle.trim(), genre }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "搜索失败");
-      const ctx = data.combined || data.snippets || "";
-      setPlotContext(ctx);
-      setSourceCount(data.sources?.length || 0);
-      toast.success(`Agent 已联网搜索到 ${data.sources?.length || 0} 个真实剧情来源`, {
-        description: "生成时将基于真实剧情，不瞎编",
-      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "搜索失败");
+      }
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("无法读取流");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let ctx = "";
+      let count = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const evtStr of events) {
+          if (!evtStr.trim()) continue;
+          let eventType = "message";
+          let dataStr = "";
+          for (const line of evtStr.split("\n")) {
+            if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+            else if (line.startsWith("data: ")) dataStr += line.slice(6);
+          }
+          if (!dataStr) continue;
+          let data: unknown;
+          try {
+            data = JSON.parse(dataStr);
+          } catch {
+            continue;
+          }
+          if (eventType === "stage") {
+            const s = data as { stage: string; source?: string };
+            setStage(s.stage);
+            if (s.stage === "read" && s.source) {
+              toast.info(`正在深度读取：${s.source}`);
+            }
+          } else if (eventType === "sources") {
+            const d = data as { sources: unknown[]; snippets: string; count: number };
+            count = d.count;
+            setSourceCount(count);
+            setPlotContext(d.snippets);
+            ctx = d.snippets;
+            toast.success(`已搜索到 ${count} 个真实剧情来源`, {
+              description: "正在深度读取最优先来源…",
+            });
+          } else if (eventType === "fullplot") {
+            const d = data as { fullPlot: string; readSource: { name: string } | null; skipped: boolean };
+            if (!d.skipped && d.fullPlot) {
+              // fullPlot + snippets 组合
+              const combined = [
+                d.fullPlot ? `=== 深度读取全文 ===\n${d.fullPlot}` : "",
+              ].filter(Boolean).join("\n\n") + "\n\n=== 搜索摘要 ===\n" + (ctx || "");
+              ctx = combined;
+              setPlotContext(combined);
+              if (d.readSource) {
+                toast.success(`已深度读取《${d.readSource.name}》`, {
+                  description: `${d.fullPlot.length} 字真实剧情`,
+                });
+              }
+            }
+          } else if (eventType === "done") {
+            const d = data as { combined: string; sources: unknown[] };
+            ctx = d.combined;
+            setPlotContext(d.combined);
+            setSourceCount(d.sources.length);
+            setStage("done");
+            toast.success("Agent 联网搜索完成", {
+              description: `${d.sources.length} 来源 · ${d.combined.length} 字真实剧情`,
+            });
+          } else if (eventType === "error") {
+            const d = data as { message: string };
+            setError(d.message);
+            toast.error(d.message);
+          }
+        }
+      }
       return ctx;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "联网搜索失败";
@@ -93,7 +167,7 @@ function useAgentPlot() {
     }
   };
 
-  return { enabled, setEnabled, searching, plotContext, sourceCount, error, search, reset };
+  return { enabled, setEnabled, searching, plotContext, sourceCount, error, stage, search, reset };
 }
 
 /** Agent 协作开关组件（标题/开头工具共用） */
@@ -145,7 +219,15 @@ function AgentToggle({
               ) : (
                 <Search className="h-3.5 w-3.5" />
               )}
-              {agent.searching ? "搜索中…" : agent.plotContext ? "重新搜索" : "搜索真实剧情"}
+              {agent.searching
+                ? agent.stage === "search"
+                  ? "搜索中…"
+                  : agent.stage === "read"
+                  ? "深度读取中…"
+                  : "处理中…"
+                : agent.plotContext
+                ? "重新搜索"
+                : "搜索真实剧情"}
             </Button>
             {agent.plotContext && (
               <Badge variant="outline" className="gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
@@ -160,7 +242,26 @@ function AgentToggle({
               </span>
             )}
           </div>
-          {agent.plotContext && (
+          {/* SSE 阶段进度指示 */}
+          {agent.searching && (
+            <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <span className={cn("h-1.5 w-1.5 rounded-full", agent.stage === "search" ? "bg-primary animate-pulse" : "bg-emerald-500")} />
+                联网搜索
+              </div>
+              <span className="text-muted-foreground/40">→</span>
+              <div className="flex items-center gap-1">
+                <span className={cn("h-1.5 w-1.5 rounded-full", agent.stage === "read" ? "bg-primary animate-pulse" : agent.stage === "done" ? "bg-emerald-500" : "bg-muted")} />
+                深度读取
+              </div>
+              <span className="text-muted-foreground/40">→</span>
+              <div className="flex items-center gap-1">
+                <span className={cn("h-1.5 w-1.5 rounded-full", agent.stage === "done" ? "bg-emerald-500" : "bg-muted")} />
+                完成
+              </div>
+            </div>
+          )}
+          {agent.plotContext && !agent.searching && (
             <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
               ✓ 生成时将基于以上真实剧情，标题/开头涉及情节忠于事实
             </p>

@@ -912,3 +912,94 @@ Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
 - 学员：demo@yingshu.com / 123456
 - dev server：http://localhost:3000，lint 0 errors
 - 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）
+
+---
+Task ID: 17 (联网搜索改 SSE 流式返回)
+Agent: 主控 Agent (Z.ai Code) — 用户明确要求
+
+## 项目当前状态判断
+项目稳定。lint 0 errors。用户要求：1) 不需要学员管理（已实现可保留但不投入）；2) 课程视频在百度网盘（videoUrl 字段用作网盘链接展示，不需要在线播放）；3) **联网搜索改 SSE 流式返回**（本轮重点）。
+
+## 本轮工作
+
+### 联网搜索 SSE 流式返回（核心）
+**痛点**：原联网搜索一次性返回（web_search 6 来源 + page_reader 深度读取），耗时 12-20s，用户在这期间只能看 spinner，体验差。
+**实现**：
+
+#### 1. 重构 ai.ts 拆分为分阶段函数
+- `searchMoviePlotStage1(movieTitle, genre)`：web_search 搜索，返回 sources + snippets + rawResults
+- `searchMoviePlotStage2(stage1)`：page_reader 深度读取最优先来源，返回 fullPlot + readSource
+- 原有 `searchMoviePlot()` 保留兼容（内部调 stage1 + stage2）
+
+#### 2. 新建 SSE 流式 API `/api/agent/search/stream`
+- POST，返回 `text/event-stream` Response
+- ReadableStream 分阶段推送事件：
+  1. `event: stage` data: `{stage:"search",status:"running"}` — 搜索开始
+  2. `event: sources` data: `{sources:[...],snippets:"...",count:6}` — web_search 完成，立即推送 6 个来源
+  3. `event: stage` data: `{stage:"read",status:"running",source:"百度百科"}` — 深度读取开始，告知来源名
+  4. `event: fullplot` data: `{fullPlot:"...",readSource:{...},skipped:false}` — 深度读取完成
+  5. `event: done` data: `{combined:"...",savedPlotId:"..."}` — 最终结果 + 自动入库
+  - 失败：`event: error` data: `{message:"..."}`
+- 修复 "Controller is already closed" 错误：加 `closed` 标志 + `send`/`close` 包装函数 try/catch
+- 自动保存剧情文档到 PlotDocument（已登录用户）
+
+#### 3. 创建共享 hook `src/lib/use-sse-agent-search.ts`
+- `useSSEAgentSearch()` 返回 `{searching, result, sources, stage, error, search, reset}`
+- `search(movieTitle, genre)` 用 fetch + ReadableStream 解析 SSE（不用 EventSource，因 EventSource 只支持 GET）
+- 解析 `event:` + `data:` 双换行分隔的事件
+- 分阶段 toast 反馈：
+  - sources 推送时：「已搜索到 N 个真实剧情来源」+「正在深度读取最优先来源…」
+  - fullplot 推送时：「已深度读取《来源名》」+「N 字真实剧情」
+  - done 推送时：「Agent 联网搜索完成」+「N 来源 · N 字真实剧情」
+
+#### 4. script-generator-view 使用 SSE
+- 引入 `useSSEAgentSearch` hook
+- handleGenerate web 模式改为调 `sseSearch.search()` 替代原 `fetch("/api/agent/search")`
+- AgentPanel 新增 `liveSources` + `liveStage` props：
+  - SSE 推送 sources 时立即显示来源列表（不等搜索完全结束）
+  - 深度读取阶段显示「深度读取中…」spinner
+  - `displaySources` 优先用 liveSources，否则用 searchResult.sources
+- 4 步时间线保留（搜索→深度读取→提取要素→生成文案），但搜索步骤实际由 SSE 驱动
+
+#### 5. tools-view 使用 SSE
+- `useAgentPlot` hook 重写：fetch `/api/agent/search/stream` + 解析 SSE 事件
+- 新增 `stage` state（search/read/done）
+- AgentToggle 增强：
+  - 按钮文案动态变化：搜索中… / 深度读取中… / 处理中…
+  - SSE 阶段进度指示器：3 个圆点（联网搜索 → 深度读取 → 完成），当前阶段 primary 色 + animate-pulse，已完成 emerald 色
+  - sources 推送后立即显示「N 个来源 · X.Xk 字」badge
+  - 分阶段 toast 反馈
+
+## 验证结果 (curl)
+- **SSE 完整流程**（盗梦空间）：
+  - event: stage (search running) — 立即推送
+  - event: sources — 6 个来源（维基百科/B站/知乎/Reddit/豆瓣/界面新闻）+ snippets
+  - event: stage (read running) — 告知深度读取来源
+  - event: fullplot — 深度读取完成
+  - event: done — 最终 combined 结果
+  - POST /api/agent/search/stream 200 in 16-19s（page_reader 18s 超时保护内）
+- **楚门的世界**：5 个事件全部正确推送，无 "Controller is already closed" 错误
+- **lint 0 errors**
+
+## 关键改进
+- **体感速度**：用户不再等 12-20s 才看到第一个反馈，2-3s 内就能看到 6 个来源列表
+- **进度可见**：分阶段进度指示器让用户知道「现在在搜索」还是「在深度读取」
+- **来源即时显示**：SSE 推送 sources 后立即在 Agent 面板渲染来源列表，不必等搜索完全结束
+- **容错**：page_reader 失败/超时时用 snippets 兜底，skipped 标志告知前端
+
+## 未解决问题/风险
+- dev server 内存敏感，连续多次 SSE 请求会让 next-server 崩溃（curl 单次测试正常）
+- 联网搜索总耗时 16-19s（page_reader 深度读取占大头），但用户体感大幅改善
+- 课程 videoUrl 现用作百度网盘链接展示（不需要在线播放，符合用户需求）
+
+## 建议下一阶段优先事项
+1. 工作台编辑器加「从其他项目导入」功能
+2. 课程详情页 videoUrl 改为「百度网盘」链接展示（带网盘图标 + 提取码输入框）
+3. 课时编辑器加 Markdown 工具栏（一键插入标题/列表/引用等）
+4. 学员管理加「学员详情」弹窗（如需保留该功能）
+
+## 测试账号
+- 管理员：admin@yingshu.com / admin123
+- 学员：demo@yingshu.com / 123456
+- dev server：http://localhost:3000，lint 0 errors
+- 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）

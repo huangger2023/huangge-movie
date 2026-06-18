@@ -221,6 +221,42 @@ export async function searchMoviePlot(
   movieTitle: string,
   genre?: string
 ): Promise<PlotSearchResult> {
+  // 阶段1：web_search
+  const stage1 = await searchMoviePlotStage1(movieTitle, genre);
+  // 阶段2：page_reader 深度读取
+  const stage2 = await searchMoviePlotStage2(stage1);
+
+  const combined = [
+    stage2.fullPlot ? `=== 深度读取全文 ===\n${stage2.fullPlot}` : "",
+    `=== 搜索摘要 ===\n${stage1.snippets}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    movieTitle,
+    snippets: stage1.snippets,
+    fullPlot: stage2.fullPlot,
+    combined,
+    sources: stage1.sources,
+    searchedAt: new Date().toISOString(),
+  };
+}
+
+/** 阶段1：web_search 搜索，返回 sources + snippets */
+export async function searchMoviePlotStage1(
+  movieTitle: string,
+  _genre?: string
+): Promise<{
+  sources: Array<{ name: string; url: string; host: string; snippet: string }>;
+  snippets: string;
+  rawResults: Array<{
+    url: string;
+    name: string;
+    snippet: string;
+    host_name: string;
+  }>;
+}> {
   const zai = await getZAI();
   const query = `${movieTitle} 电影 剧情简介 详细 结局 解析`;
   const results = (await zai.functions.invoke("web_search", {
@@ -244,8 +280,19 @@ export async function searchMoviePlot(
     .map((r, i) => `【来源${i + 1}：${r.name}（${r.host_name}）】\n${r.snippet}`)
     .join("\n\n");
 
-  // 深度读取：优先选剧情类来源（百度百科最稳定），只读1个并加超时保护
-  let fullPlot = "";
+  return { sources, snippets, rawResults: results };
+}
+
+/** 阶段2：page_reader 深度读取最优先来源，返回 fullPlot */
+export async function searchMoviePlotStage2(stage1: {
+  rawResults: Array<{
+    url: string;
+    name: string;
+    snippet: string;
+    host_name: string;
+  }>;
+}): Promise<{ fullPlot: string; readSource: { name: string; url: string } | null }> {
+  const zai = await getZAI();
   // 优先级：百度百科 > 知乎专栏 > 豆瓣 > 其他
   const hostPriority = [
     "baike.baidu",
@@ -254,62 +301,50 @@ export async function searchMoviePlot(
     "douban",
     "zhihu",
   ];
-  const ranked = [...results].sort((a, b) => {
+  const ranked = [...stage1.rawResults].sort((a, b) => {
     const aIdx = hostPriority.findIndex((h) => a.host_name.includes(h));
     const bIdx = hostPriority.findIndex((h) => b.host_name.includes(h));
     const aScore = aIdx >= 0 ? aIdx : 99;
     const bScore = bIdx >= 0 ? bIdx : 99;
     return aScore - bScore;
   });
-  // 只尝试读1个最优先的来源（大幅减少耗时和502概率）
   const readCandidate = ranked[0];
-  if (readCandidate) {
-    try {
-      // 加 18s 超时保护，避免 page_reader 卡死或 OOM 502
-      const readPromise = zai.functions.invoke("page_reader", {
-        url: readCandidate.url,
-      });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("page_reader timeout")), 18000)
-      );
-      const read = (await Promise.race([readPromise, timeoutPromise])) as {
-        code: number;
-        data?: { html?: string; title?: string; content?: string };
-      };
-      const rawText = read?.data?.html || read?.data?.content || "";
-      const text = rawText
-        .replace(/<script[\s\S]*?<\/script>/gi, "")
-        .replace(/<style[\s\S]*?<\/style>/gi, "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&nbsp;/g, " ")
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (text && text.length > 300) {
-        fullPlot = `【深度读取：${readCandidate.name}】\n${text.slice(0, 2500)}\n\n`;
-      }
-    } catch {
-      // page_reader 失败/超时则用 snippets 兜底
-    }
+  if (!readCandidate) {
+    return { fullPlot: "", readSource: null };
   }
-
-  const combined = [
-    fullPlot ? `=== 深度读取全文 ===\n${fullPlot}` : "",
-    `=== 搜索摘要 ===\n${snippets}`,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
-  return {
-    movieTitle,
-    snippets,
-    fullPlot,
-    combined,
-    sources,
-    searchedAt: new Date().toISOString(),
-  };
+  try {
+    // 加 18s 超时保护
+    const readPromise = zai.functions.invoke("page_reader", {
+      url: readCandidate.url,
+    });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("page_reader timeout")), 18000)
+    );
+    const read = (await Promise.race([readPromise, timeoutPromise])) as {
+      code: number;
+      data?: { html?: string; title?: string; content?: string };
+    };
+    const rawText = read?.data?.html || read?.data?.content || "";
+    const text = rawText
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text && text.length > 300) {
+      return {
+        fullPlot: `【深度读取：${readCandidate.name}】\n${text.slice(0, 2500)}\n\n`,
+        readSource: { name: readCandidate.name, url: readCandidate.url },
+      };
+    }
+  } catch {
+    // page_reader 失败/超时则用 snippets 兜底
+  }
+  return { fullPlot: "", readSource: null };
 }
 
 export async function generateTTS(params: {

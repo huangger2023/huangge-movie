@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/store";
 import { SaveToWorkspaceDialog, type WorkspaceField } from "@/components/site/save-to-workspace-dialog";
+import { useSSEAgentSearch } from "@/lib/use-sse-agent-search";
 import { cn } from "@/lib/utils";
 
 const GENRES = ["剧情", "悬疑", "科幻", "爱情", "动作", "恐怖", "喜剧", "犯罪", "动画", "纪录片"];
@@ -150,6 +151,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export function ScriptGeneratorView() {
   const user = useAppStore((s) => s.user);
   const setView = useAppStore((s) => s.setView);
+  const sseSearch = useSSEAgentSearch();
 
   const [form, setForm] = React.useState<FormState>(DEFAULT_FORM);
   const [agentMode, setAgentMode] = React.useState<AgentMode>("none");
@@ -312,33 +314,40 @@ export function ScriptGeneratorView() {
       if (agentMode === "web") {
         resetSteps();
         await sleep(150);
+        // === 阶段1：SSE 流式联网搜索 ===
         startStep(1);
-        const sres = await fetch("/api/agent/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ movieTitle: form.movieTitle.trim(), genre: form.genre }),
-        });
-        if (!sres.ok) {
-          const err = await sres.json().catch(() => ({}));
-          throw new Error(err.error || "联网搜索失败");
+        const sseResult = await sseSearch.search(form.movieTitle.trim(), form.genre);
+        if (!sseResult) {
+          throw new Error("联网搜索失败");
         }
-        const sdata = (await sres.json()) as SearchResult;
-        finishStep(1, `找到 ${sdata.sources.length} 个来源`);
+        finishStep(1, `找到 ${sseResult.sources.length} 个来源`);
+        // 用 SSE 结果构造 SearchResult 兼容现有渲染
+        const sdata: SearchResult = {
+          movieTitle: sseResult.movieTitle || form.movieTitle.trim(),
+          snippets: sseResult.snippets,
+          fullPlot: sseResult.fullPlot,
+          combined: sseResult.combined,
+          sources: sseResult.sources,
+          searchedAt: sseResult.searchedAt,
+          savedPlotId: sseResult.savedPlotId,
+        };
         setSearchResult(sdata);
         // 搜索成功后若已登录，刷新剧情文档库（搜索会自动入库）
         if (user) void fetchPlots();
 
-        await sleep(400);
+        // === 阶段2：深度读取（SSE 已推送 fullplot，这里推进时间线） ===
         startStep(2);
-        await sleep(700);
+        await sleep(300);
         const readChars = sdata.fullPlot?.length || sdata.snippets.length || 0;
         finishStep(2, `读取 ${readChars} 字`);
 
+        // === 阶段3：提取要素 ===
         await sleep(300);
         startStep(3);
-        await sleep(500);
+        await sleep(400);
         finishStep(3, "已整合剧情要素");
 
+        // === 阶段4：基于真实剧情生成文案 ===
         startStep(4);
         plotContext = sdata.combined;
         const scriptData = await callScript(plotContext);
@@ -645,8 +654,10 @@ export function ScriptGeneratorView() {
               isLoggedIn={!!user}
               steps={steps}
               movieTitle={form.movieTitle.trim() || "电影"}
-              isRunning={isAgentRunning || loading}
+              isRunning={isAgentRunning || loading || sseSearch.searching}
               searchResult={searchResult}
+              liveSources={sseSearch.sources}
+              liveStage={sseSearch.stage}
               onRetry={handleGenerate}
               plots={plots}
               plotsLoading={plotsLoading}
@@ -759,6 +770,8 @@ interface AgentPanelProps {
   movieTitle: string;
   isRunning: boolean;
   searchResult: SearchResult | null;
+  liveSources?: SearchSource[];
+  liveStage?: { stage: string; status: string; source?: string; url?: string; movieTitle?: string } | null;
   onRetry: () => void;
   plots: PlotDoc[];
   plotsLoading: boolean;
@@ -780,6 +793,8 @@ function AgentPanel(props: AgentPanelProps) {
     movieTitle,
     isRunning,
     searchResult,
+    liveSources,
+    liveStage,
     onRetry,
     plots,
     plotsLoading,
@@ -793,7 +808,9 @@ function AgentPanel(props: AgentPanelProps) {
   } = props;
 
   const hasTimeline = agentMode === "web" && steps.some((s) => s.status !== "pending");
-  const hasSources = agentMode === "web" && !!searchResult && searchResult.sources.length > 0;
+  // SSE 实时推送的 sources 优先，否则用 searchResult
+  const displaySources = liveSources && liveSources.length > 0 ? liveSources : searchResult?.sources || [];
+  const hasSources = agentMode === "web" && displaySources.length > 0;
   const hasPlotLib = agentMode === "doc";
 
   return (
@@ -875,9 +892,15 @@ function AgentPanel(props: AgentPanelProps) {
               exit={{ opacity: 0, y: -8 }}
             >
               <SectionTitle icon={<ExternalLink className="h-3.5 w-3.5" />}>
-                剧情来源（{searchResult.sources.length}）
+                剧情来源（{displaySources.length}）
+                {liveStage && liveStage.stage === "read" && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-primary">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    深度读取中…
+                  </span>
+                )}
               </SectionTitle>
-              <SearchSources sources={searchResult.sources} />
+              <SearchSources sources={displaySources} />
             </motion.div>
           )}
         </AnimatePresence>
