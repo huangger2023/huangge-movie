@@ -244,3 +244,65 @@ Stage Summary:
 - 核心价值达成：AI 文案基于真实剧情，不再瞎编，创作者可据此剪辑对应画面
 - 3种模式：不使用Agent(快速/标注未校验) / 联网搜索(自动抓取) / 使用剧情文档(手动上传豆瓣维基剧情)
 - 待优化：联网搜索较慢(20-35s，因 page_reader 深度读取2个页面)，可考虑只读1个或异步
+
+---
+Task ID: 7 (cron 巡检轮 · 分镜表 + 学员展示墙)
+Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
+
+## 项目当前状态判断
+项目整体稳定。dev log 无报错，核心流程（AI文案/标题/开头/润色/TTS/Agent协作/课程/报名/登录/管理后台）均可用。lint 0 errors。
+
+## 本轮工作
+
+### QA 测试 (agent-browser)
+- 主页：无 console error，真实统计数据显示正常
+- 课程中心：6门课程卡片渲染正常，筛选可用
+- 创作工具箱：4个工具 tab 正常
+- 我的学习：登录态正常，统计/历史展示正常
+
+### 修复的 bug
+- **Clapperboard 重复导入导致编译错误**：在 script-generator-view 加入分镜表功能时，新增 import 块里重复了已存在的 `Clapperboard`，导致 `the name Clapperboard is defined multiple times` 编译错误，进而使 /api/ai/script 整个路由 500（因 page.tsx 引用了该视图，SSR 编译失败）。
+  - 修复：删除重复的 import 项
+  - 验证：curl /api/ai/script 恢复 200，生成成功
+
+### 新需求1：AI 文案生成器「分镜表」导出 (已完成)
+**痛点**：创作者拿到文案后，还需手动拆分镜头对应画面剪辑，效率低。
+**实现** (script-generator-view.tsx，纯前端)：
+- ResultPanel 工具栏新增「文案 / 分镜表」视图切换 toggle
+- StoryboardTable 组件：parseShots() 把 markdown 文案按 ## 章节切句，生成 Shot[]（镜号/章节/旁白/估算时长/画面类型）
+- 画面类型自动分类：开场冲击(rose)/剧情画面(muted)/升华收尾(accent)/标题字幕(violet)/片尾标签(emerald)，带彩色 badge
+- 概览栏：镜头数 + 预计总时长(按4字/秒估算) + 场景类型数 + 导出按钮
+- 导出：生成 Markdown 表格（镜号|章节|画面类型|旁白文案|预计时长），Blob 下载 .md 文件，可导入剪映/PR
+- AnimatePresence 切换动画，每条镜头逐条入场
+**验证**：agent-browser 点击「分镜表」tab，显示镜头数/预计时长/开场冲击/剧情画面等分类，导出按钮可用
+
+### 新需求2：首页「学员创作展示墙」(已完成)
+**痛点**：首页证言是编造的假案例，缺乏真实感。
+**实现**：
+- 新建 /api/showcase 接口：取最近 12 条 GeneratedScript (SCRIPT/TITLE/HOOK)，提取文案摘要（SCRIPT 取黄金3秒开头实际内容，TITLE 取第一条标题），作者脱敏（首字+**）
+- home-view 新增 SHOWCASE section（在精选课程与学习路径之间）：3列网格卡片，显示类型badge/电影名/文案摘要/作者头像/相对时间/收藏星标
+- 仅当有数据时显示（showcase.length > 0）
+- 底部「我也要生成一条」CTA 跳转 AI文案生成器
+**验证**：agent-browser 确认首页展示真实生成记录（肖申克/消失的她，含真实文案摘要如"如果给你一个完美越狱计划，却需要19年时间，你敢赌吗？"）
+
+### 修复的 excerpt 提取 bug
+- showcase API 初版 excerpt 提取把"黄金3秒开头"标题文本当成内容
+- 修复：findIndex 定位含"黄金3秒"的行，取其后的第一个非空非标题行作为实际文案
+- 验证：excerpt 现在显示"一个银行家，被冤入狱19年，却用一把小锤子挖出了500码..."等真实内容
+
+## 验证结果
+- lint 0 errors
+- dev server 健康，/api/showcase 200，/api/ai/script 200
+- 分镜表功能：视图切换/镜头拆分/分类badge/导出 全部可用
+- 学员展示墙：真实数据渲染，文案摘要正确
+
+## 未解决问题/风险
+- 联网搜索 Agent 模式仍较慢（20-35s，因 page_reader 深度读取2个页面），可考虑只读1个或异步流式
+- 课程 videoUrl 仍为 null（图文讲义形式），如需视频课需手动上传
+- nextjs-portal (devtools toast) 偶尔遮挡点击，QA 时需 eval 移除
+
+## 建议下一阶段优先事项
+1. 课程详情页加「AI 助教」功能：学习课时时可问 AI 解答疑问（基于课时内容 + LLM）
+2. 爆款标题/黄金开头工具也接 Agent 协作（目前只有完整文案生成器接了）
+3. 添加「创作工作台」概念：把生成的文案/标题/开头/分镜统一到一个项目里管理
+4. 联网搜索改为流式返回（SSE），提升体感速度

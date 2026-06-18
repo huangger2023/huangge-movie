@@ -29,6 +29,12 @@ import {
   FileSearch,
   Library,
   Plus,
+  Table,
+  Download,
+  ListTree,
+  Clock,
+  Camera,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -1381,6 +1387,8 @@ interface ResultPanelProps {
   onTTS: () => void;
 }
 
+type ResultViewMode = "script" | "storyboard";
+
 function ResultPanel({
   result,
   isFav,
@@ -1394,6 +1402,7 @@ function ResultPanel({
   onTTS,
 }: ResultPanelProps) {
   const isUnverified = result.includes("剧情未经校验");
+  const [viewMode, setViewMode] = React.useState<ResultViewMode>("script");
   return (
     <div className="flex flex-1 flex-col">
       {/* 工具栏 */}
@@ -1401,6 +1410,27 @@ function ResultPanel({
         <div className="mr-auto flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5" />
           创作完成
+        </div>
+        {/* 视图切换 */}
+        <div className="flex items-center rounded-lg border border-border/60 bg-background/60 p-0.5">
+          <Button
+            size="sm"
+            variant={viewMode === "script" ? "secondary" : "ghost"}
+            className={cn("h-7 gap-1.5 px-2.5 text-xs", viewMode === "script" && "shadow-sm")}
+            onClick={() => setViewMode("script")}
+          >
+            <ScrollText className="h-3.5 w-3.5" />
+            文案
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === "storyboard" ? "secondary" : "ghost"}
+            className={cn("h-7 gap-1.5 px-2.5 text-xs", viewMode === "storyboard" && "shadow-sm")}
+            onClick={() => setViewMode("storyboard")}
+          >
+            <Clapperboard className="h-3.5 w-3.5" />
+            分镜表
+          </Button>
         </div>
         <Button size="sm" variant="ghost" className="h-8 gap-1.5 px-2.5" onClick={onCopy}>
           <Copy className="h-3.5 w-3.5" />
@@ -1448,11 +1478,208 @@ function ResultPanel({
         </div>
       )}
 
-      {/* Markdown 文案 */}
+      {/* 内容区：文案 / 分镜表 切换 */}
       <div className="scrollbar-thin flex-1 overflow-y-auto p-5 sm:p-6">
-        <div className="rounded-xl border-l-2 border-primary bg-card/40 p-5">
-          <Markdown content={result} />
+        <AnimatePresence mode="wait">
+          {viewMode === "script" ? (
+            <motion.div
+              key="script"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-xl border-l-2 border-primary bg-card/40 p-5"
+            >
+              <Markdown content={result} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="storyboard"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <StoryboardTable content={result} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/** 分镜表：把文案按章节切句，生成可剪辑的分镜表 */
+interface Shot {
+  id: number;
+  section: string;
+  narration: string;
+  estDuration: number; // 估算秒数
+  sceneType: string;
+}
+
+function parseShots(content: string): Shot[] {
+  const lines = content.split("\n");
+  const shots: Shot[] = [];
+  let currentSection = "开头";
+  let id = 1;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    // 识别章节标题 (## 开头)
+    const h2 = line.match(/^#{1,3}\s*(.*)$/);
+    if (h2) {
+      const title = h2[1].replace(/^[🎬📖💬🏷️📌\s]+/, "").trim();
+      if (title) currentSection = title;
+      continue;
+    }
+    // 跳过标签行（#xxx）和列表项行
+    if (/^#[^\s#]/.test(line)) continue;
+    // 把段落按句号/问号/感叹号切句
+    const sentences = line
+      .replace(/^\d+\.\s*/, "")
+      .split(/(?<=[。！？!?])\s*/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 4);
+    for (const s of sentences) {
+      const estDuration = Math.max(3, Math.ceil(s.length / 4)); // 约4字/秒
+      let sceneType = "剧情画面";
+      if (/开头|黄金|钩子/.test(currentSection)) sceneType = "开场冲击";
+      else if (/标签/.test(currentSection)) sceneType = "片尾标签";
+      else if (/标题|建议/.test(currentSection)) sceneType = "标题字幕";
+      else if (/结尾|互动|金句/.test(currentSection)) sceneType = "升华收尾";
+      shots.push({
+        id: id++,
+        section: currentSection,
+        narration: s,
+        estDuration,
+        sceneType,
+      });
+    }
+  }
+  return shots;
+}
+
+const SCENE_STYLE: Record<string, string> = {
+  开场冲击: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  剧情画面: "bg-muted/50 text-muted-foreground border-border/60",
+  升华收尾: "bg-accent/10 text-accent-foreground border-accent/20",
+  标题字幕: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+  片尾标签: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+};
+
+function StoryboardTable({ content }: { content: string }) {
+  const shots = React.useMemo(() => parseShots(content), [content]);
+  const totalDuration = shots.reduce((s, sh) => s + sh.estDuration, 0);
+  const totalMin = Math.floor(totalDuration / 60);
+  const totalSec = totalDuration % 60;
+
+  const handleExport = () => {
+    const md = [
+      `# 分镜表 · 共 ${shots.length} 个镜头 · 预计时长 ${totalMin > 0 ? totalMin + "分" : ""}${totalSec}秒`,
+      "",
+      "| 镜号 | 章节 | 画面类型 | 旁白文案 | 预计时长 |",
+      "| --- | --- | --- | --- | --- |",
+      ...shots.map(
+        (s) =>
+          `| ${s.id} | ${s.section} | ${s.sceneType} | ${s.narration.replace(/\|/g, "\\|")} | ${s.estDuration}s |`
+      ),
+      "",
+      `> 由影述学院 AI 文案生成器自动拆分，可导入剪映/PR 对应剪辑。`,
+    ].join("\n");
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `分镜表-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("分镜表已导出为 Markdown");
+  };
+
+  if (shots.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Clapperboard className="mb-3 h-10 w-10 text-muted/40" />
+        <p className="text-sm text-muted-foreground">无法解析分镜，请先生成文案</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* 概览栏 */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/40 p-3">
+        <div className="flex items-center gap-1.5 text-xs">
+          <ListTree className="h-3.5 w-3.5 text-primary" />
+          <span className="text-muted-foreground">镜头</span>
+          <span className="font-semibold">{shots.length}</span>
         </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <Clock className="h-3.5 w-3.5 text-accent" />
+          <span className="text-muted-foreground">预计时长</span>
+          <span className="font-semibold">
+            {totalMin > 0 ? `${totalMin}分` : ""}
+            {totalSec}秒
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <Camera className="h-3.5 w-3.5 text-emerald-500" />
+          <span className="text-muted-foreground">场景类型</span>
+          <span className="font-semibold">
+            {new Set(shots.map((s) => s.sceneType)).size}
+          </span>
+        </div>
+        <Button
+          size="sm"
+          onClick={handleExport}
+          className="ml-auto h-7 gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent px-3 text-xs text-primary-foreground"
+        >
+          <Download className="h-3.5 w-3.5" />
+          导出分镜表
+        </Button>
+      </div>
+
+      {/* 分镜列表 */}
+      <div className="space-y-2">
+        {shots.map((shot, i) => (
+          <motion.div
+            key={shot.id}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.4) }}
+            className="group flex gap-3 rounded-lg border border-border/60 bg-card/30 p-3 transition-colors hover:border-primary/40 hover:bg-primary/[0.03]"
+          >
+            {/* 镜号 */}
+            <div className="flex flex-col items-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                {String(shot.id).padStart(2, "0")}
+              </div>
+              <span className="mt-1 text-[10px] text-muted-foreground">
+                {shot.estDuration}s
+              </span>
+            </div>
+            {/* 内容 */}
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {shot.section}
+                </span>
+                <span
+                  className={cn(
+                    "rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+                    SCENE_STYLE[shot.sceneType] || SCENE_STYLE["剧情画面"]
+                  )}
+                >
+                  {shot.sceneType}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-foreground/85">
+                {shot.narration}
+              </p>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

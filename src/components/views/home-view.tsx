@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Sparkles,
   Wand2,
-  Type,
+  Type as TypeIcon,
   Zap,
   Mic,
   PlayCircle,
@@ -21,6 +21,7 @@ import {
   Target,
   Rocket,
   BookOpen,
+  Clapperboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,7 +38,7 @@ const AI_TOOLS = [
     view: "script-generator" as const,
   },
   {
-    icon: Type,
+    icon: TypeIcon,
     title: "爆款标题生成器",
     desc: "六大爆款标题公式，批量产出悬念型/反差型/数字型标题，告别想标题想到头秃。",
     color: "from-amber-500 to-orange-500",
@@ -121,13 +122,22 @@ interface PlatformStats {
   userCount: number;
 }
 
+interface ShowcaseItem {
+  id: string;
+  type: string;
+  movieTitle: string;
+  genre: string | null;
+  excerpt: string;
+  createdAt: string;
+  author: string;
+  isFavorite: boolean;
+}
+
 export function HomeView() {
   const { setView } = useAppStore();
   const [courses, setCourses] = React.useState<CourseItem[]>([]);
   const [stats, setStats] = React.useState<PlatformStats | null>(null);
-  const [recentScripts, setRecentScripts] = React.useState<
-    { id: string; movieTitle: string; type: string; createdAt: string }[]
-  >([]);
+  const [showcase, setShowcase] = React.useState<ShowcaseItem[]>([]);
 
   React.useEffect(() => {
     fetch("/api/courses?featured=1&limit=4")
@@ -138,6 +148,11 @@ export function HomeView() {
     fetch("/api/stats")
       .then((r) => r.json())
       .then((d) => setStats(d))
+      .catch(() => {});
+    // 学员真实创作展示
+    fetch("/api/showcase")
+      .then((r) => r.json())
+      .then((d) => setShowcase(d.items || []))
       .catch(() => {});
   }, []);
 
@@ -371,6 +386,83 @@ export function HomeView() {
         </div>
       </section>
 
+      {/* SHOWCASE — 学员真实创作展示墙 */}
+      {showcase.length > 0 && (
+        <section className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <SectionHeading
+            eyebrow="学员真实创作"
+            icon={Clapperboard}
+            title="看看同学们用 AI 生成的作品"
+            subtitle="以下均为平台真实生成记录，非虚构案例。你也来试试，下一个爆款可能就是你的。"
+          />
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {showcase.slice(0, 6).map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.06 }}
+              >
+                <Card className="group h-full overflow-hidden p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow-primary">
+                  <div className="mb-3 flex items-center justify-between">
+                    <Badge
+                      variant="outline"
+                      className={
+                        item.type === "SCRIPT"
+                          ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                          : item.type === "TITLE"
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          : "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400"
+                      }
+                    >
+                      {item.type === "SCRIPT"
+                        ? "解说文案"
+                        : item.type === "TITLE"
+                        ? "爆款标题"
+                        : "黄金开头"}
+                    </Badge>
+                    {item.isFavorite && (
+                      <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                    )}
+                  </div>
+                  <h3 className="mb-2 line-clamp-1 font-semibold text-foreground">
+                    《{item.movieTitle}》
+                  </h3>
+                  <p className="mb-4 line-clamp-3 min-h-[3.6rem] text-sm leading-relaxed text-muted-foreground">
+                    {item.excerpt}
+                  </p>
+                  <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-[10px] font-bold text-primary-foreground">
+                        {item.author.slice(0, 1)}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {item.author}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground/70">
+                      {formatRelativeTime(item.createdAt)}
+                    </span>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Button
+              variant="outline"
+              onClick={() => setView("script-generator")}
+              className="rounded-full"
+            >
+              <Sparkles className="mr-1.5 h-4 w-4 text-primary" />
+              我也要生成一条
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          </div>
+        </section>
+      )}
+
       {/* HOW IT WORKS */}
       <section className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <SectionHeading
@@ -510,6 +602,16 @@ export function HomeView() {
       </section>
     </div>
   );
+}
+
+function formatRelativeTime(iso: string): string {
+  const d = new Date(iso);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return "刚刚";
+  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}天前`;
+  return d.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
 }
 
 function SectionHeading({
