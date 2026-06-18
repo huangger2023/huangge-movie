@@ -192,7 +192,7 @@ export async function generateTTS(params: {
     input: text,
     voice: params.voice ?? "tongtong",
     speed: params.speed ?? 1.0,
-    response_format: "mp3",
+    response_format: "wav",
     stream: false,
   });
   const arrayBuffer = await response.arrayBuffer();

@@ -1039,7 +1039,7 @@ function TtsTool() {
                 <Volume2 className="h-4 w-4 text-primary" />
                 试听结果
               </div>
-              <a href={audioUrl} download="yingshu-tts.mp3">
+              <a href={audioUrl} download="yingshu-tts.wav">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1063,7 +1063,7 @@ function TtsTool() {
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                提示：满意后可下载 mp3 文件，配合剪辑软件即可直接使用。
+                提示：满意后可下载 wav 音频文件，导入剪辑软件即可直接使用。
               </p>
             </div>
           </Card>

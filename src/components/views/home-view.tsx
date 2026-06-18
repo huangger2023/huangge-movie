@@ -20,19 +20,13 @@ import {
   Brain,
   Target,
   Rocket,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CourseCard, type CourseItem } from "@/components/site/course-card";
 import { useAppStore } from "@/lib/store";
-
-const STATS = [
-  { icon: Users, value: "12,800+", label: "累计学员" },
-  { icon: TrendingUp, value: "1,200+", label: "爆款案例" },
-  { icon: Star, value: "4.9/5", label: "学员评分" },
-  { icon: Award, value: "6年", label: "赛道沉淀" },
-];
 
 const AI_TOOLS = [
   {
@@ -95,37 +89,87 @@ const STEPS = [
 const TESTIMONIALS = [
   {
     name: "阿凯解说",
-    role: "影视赛道 · 38万粉",
+    role: "影视赛道 · 学员案例",
     content:
-      "跟着老陈学了两周，第一条视频就跑了50万播放。AI文案工具太香了，现在一天能产出3条高质量解说，效率直接翻了5倍。",
+      "跟着课程学了两周，配合 AI 文案工具，第一条视频就跑了 50 万播放。现在一天能产出 3 条高质量解说，效率直接翻了 5 倍。",
     avatar: "凯",
   },
   {
     name: "电影夜话",
-    role: "悬疑赛道 · 12万粉",
+    role: "悬疑赛道 · 学员案例",
     content:
-      "最值的是AI文案大师课。以前写一条文案要2小时，现在10分钟出初稿再人工微调，质量还更高。回本太快了。",
+      "最值的是 AI 文案大师课。以前写一条文案要 2 小时，现在 10 分钟出初稿再人工微调，质量还更高。回本太快了。",
     avatar: "夜",
   },
   {
     name: "小鹿看片",
-    role: "情感赛道 · 65万粉",
+    role: "情感赛道 · 学员案例",
     content:
-      "黄金开头工具简直是救星。我的爆款开头基本都来自这里，完播率从35%涨到了52%，推荐所有做解说的都来用。",
+      "黄金开头工具简直是救星。我的爆款开头基本都来自这里，完播率从 35% 涨到了 52%，推荐所有做解说的都来用。",
     avatar: "鹿",
   },
 ];
 
+interface PlatformStats {
+  courseCount: number;
+  lessonCount: number;
+  totalStudents: number;
+  avgRating: number;
+  totalRatingCount: number;
+  totalDurationMin: number;
+  generatedScripts: number;
+  userCount: number;
+}
+
 export function HomeView() {
   const { setView } = useAppStore();
   const [courses, setCourses] = React.useState<CourseItem[]>([]);
+  const [stats, setStats] = React.useState<PlatformStats | null>(null);
+  const [recentScripts, setRecentScripts] = React.useState<
+    { id: string; movieTitle: string; type: string; createdAt: string }[]
+  >([]);
 
   React.useEffect(() => {
     fetch("/api/courses?featured=1&limit=4")
       .then((r) => r.json())
       .then((d) => setCourses(d.courses || []))
       .catch(() => {});
+    // 真实平台聚合统计
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .catch(() => {});
   }, []);
+
+  const liveStats = React.useMemo(() => {
+    if (!stats) return null;
+    return [
+      {
+        icon: BookOpen,
+        value: String(stats.courseCount),
+        label: "在线课程",
+        suffix: "门",
+      },
+      {
+        icon: Users,
+        value: stats.totalStudents.toLocaleString(),
+        label: "累计学员",
+        suffix: "人",
+      },
+      {
+        icon: Star,
+        value: stats.avgRating.toFixed(1),
+        label: "平均评分",
+        suffix: `/5 · ${stats.totalRatingCount} 评价`,
+      },
+      {
+        icon: Sparkles,
+        value: stats.generatedScripts.toLocaleString(),
+        label: "AI 生成文案",
+        suffix: "份",
+      },
+    ];
+  }, [stats]);
 
   return (
     <div className="relative">
@@ -214,14 +258,14 @@ export function HomeView() {
             </motion.p>
           </div>
 
-          {/* Stats */}
+          {/* Stats — 真实平台数据 */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}
             className="mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-4 sm:grid-cols-4"
           >
-            {STATS.map((s) => (
+            {(liveStats || []).map((s) => (
               <div
                 key={s.label}
                 className="glass-card rounded-2xl border border-border/60 p-5 text-center"
@@ -229,13 +273,26 @@ export function HomeView() {
                 <s.icon className="mx-auto mb-2 h-5 w-5 text-primary" />
                 <div className="text-2xl font-bold tracking-tight">
                   {s.value}
+                  <span className="ml-0.5 text-sm font-normal text-muted-foreground">
+                    {s.suffix}
+                  </span>
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {s.label}
                 </div>
               </div>
             ))}
+            {!liveStats &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="glass-card h-24 animate-pulse rounded-2xl border border-border/60"
+                />
+              ))}
           </motion.div>
+          <p className="mx-auto mt-3 max-w-4xl text-center text-[11px] text-muted-foreground/70">
+            * 以上数据来自平台数据库实时聚合，非营销虚标
+          </p>
         </div>
       </section>
 
