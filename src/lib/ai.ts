@@ -244,29 +244,35 @@ export async function searchMoviePlot(
     .map((r, i) => `【来源${i + 1}：${r.name}（${r.host_name}）】\n${r.snippet}`)
     .join("\n\n");
 
-  // 深度读取：优先选剧情类来源（百度百科/知乎/豆瓣等中文站），读取全文
+  // 深度读取：优先选剧情类来源（百度百科最稳定），只读1个并加超时保护
   let fullPlot = "";
-  const plotHosts = [
+  // 优先级：百度百科 > 知乎专栏 > 豆瓣 > 其他
+  const hostPriority = [
     "baike.baidu",
     "zhuanlan.zhihu",
-    "douban",
     "movie.douban",
+    "douban",
     "zhihu",
-    "sohu",
-    "163.com",
-    "sina",
   ];
   const ranked = [...results].sort((a, b) => {
-    const aScore = plotHosts.some((h) => a.host_name.includes(h)) ? 0 : 1;
-    const bScore = plotHosts.some((h) => b.host_name.includes(h)) ? 0 : 1;
+    const aIdx = hostPriority.findIndex((h) => a.host_name.includes(h));
+    const bIdx = hostPriority.findIndex((h) => b.host_name.includes(h));
+    const aScore = aIdx >= 0 ? aIdx : 99;
+    const bScore = bIdx >= 0 ? bIdx : 99;
     return aScore - bScore;
   });
-  const readCandidates = ranked.slice(0, 2);
-  for (const r of readCandidates) {
+  // 只尝试读1个最优先的来源（大幅减少耗时和502概率）
+  const readCandidate = ranked[0];
+  if (readCandidate) {
     try {
-      const read = (await zai.functions.invoke("page_reader", {
-        url: r.url,
-      })) as {
+      // 加 18s 超时保护，避免 page_reader 卡死或 OOM 502
+      const readPromise = zai.functions.invoke("page_reader", {
+        url: readCandidate.url,
+      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("page_reader timeout")), 18000)
+      );
+      const read = (await Promise.race([readPromise, timeoutPromise])) as {
         code: number;
         data?: { html?: string; title?: string; content?: string };
       };
@@ -282,10 +288,10 @@ export async function searchMoviePlot(
         .replace(/\s+/g, " ")
         .trim();
       if (text && text.length > 300) {
-        fullPlot += `【深度读取：${r.name}】\n${text.slice(0, 2500)}\n\n`;
+        fullPlot = `【深度读取：${readCandidate.name}】\n${text.slice(0, 2500)}\n\n`;
       }
     } catch {
-      // page_reader 失败则跳过，用 snippets 兜底
+      // page_reader 失败/超时则用 snippets 兜底
     }
   }
 

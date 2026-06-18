@@ -402,3 +402,47 @@ Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
 2. AI 助教对话历史持久化（加 ChatMessage 表）
 3. 添加「创作工作台」：统一管理文案/标题/开头/分镜
 4. 课程详情页加视频播放器支持
+
+---
+Task ID: 10 (cron 巡检轮 · 搜索优化 + 助教历史持久化)
+Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
+
+## 项目当前状态判断
+项目稳定。dev log 发现 page_reader 对某些 URL 会 502 OOM（506MB 内存超限），被 try/catch 吞掉所以 API 返回 200 但深度读取失败，导致搜索慢（64s）且 fullPlot 经常拿不到。lint 0 errors。
+
+## 本轮工作
+
+### 优化1：联网搜索速度优化（64s → 12.6s）
+**问题**：searchMoviePlot 读 2 个 page_reader，每个可能卡死/OOM，总耗时 64s
+**修复**：
+- 改为只读 1 个最优先来源（host 优先级：百度百科 > 知乎专栏 > 豆瓣 > 其他）
+- 加 18s Promise.race 超时保护，避免 page_reader 卡死
+- 排序逻辑改为 findIndex 精确优先级（原来只是 0/1 二分）
+**验证**：curl 楚门的世界搜索从 64s 降到 12.6s，fullPlot 成功获取 2520 字
+
+### 新需求：AI 助教对话历史持久化（已完成）
+**痛点**：上轮 AI 助教对话刷新即丢失，学员无法回顾之前问过的问题
+**实现**：
+- Prisma 新增 ChatMessage 模型（userId/lessonId/role/content/createdAt），db:push + generate
+- /api/ai/assistant POST 改为：从 DB 加载历史对话（最近12条）→ 传 LLM → 把 user+assistant 消息 createMany 存入 DB；新增 GET 接口按 lessonId 查历史
+- course-detail-view 的 LessonAssistant 组件：打开时 useEffect fetch GET /api/ai/assistant?lessonId 加载历史并 setMessages；提问时传 lessonId 让后端持久化
+**验证**：
+- curl：登录 → POST 提问 → GET 历史返回 2 条（user+assistant）✓
+- agent-browser：提问"核心要点" → AI 回答 → reload 页面 → 重新打开同一课时 → 助教面板自动加载之前的提问"这节课的核心要点" ✓
+- dev log: GET /api/ai/assistant?lessonId=... 200
+
+## 验证结果
+- lint 0 errors
+- 联网搜索 64s→12.6s，且 fullPlot 稳定获取
+- AI 助教对话历史持久化端到端可用，刷新后历史自动加载
+
+## 未解决问题/风险
+- page_reader 对维基百科等大页面仍可能 502 OOM（已用超时+单读兜底）
+- 课程 videoUrl 仍为 null
+- 搜索 12.6s 仍偏慢，可考虑异步流式返回
+
+## 建议下一阶段优先事项
+1. 添加「创作工作台」：统一管理文案/标题/开头/分镜
+2. 联网搜索改 SSE 流式（先返回 snippets，fullPlot 异步补充）
+3. 课程详情页加视频播放器支持
+4. AI 助教加「清除历史」按钮

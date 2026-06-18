@@ -670,6 +670,24 @@ function LessonAssistant({
   const [messages, setMessages] = React.useState<ChatMsg[]>([]);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
+  // 打开时加载历史对话（持久化）
+  React.useEffect(() => {
+    if (!open || !user || !lesson.id) return;
+    fetch(`/api/ai/assistant?lessonId=${lesson.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.messages?.length) {
+          setMessages(
+            d.messages.map((m: { role: string; content: string }) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [open, user, lesson.id]);
+
   React.useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -698,10 +716,10 @@ function LessonAssistant({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
+          lessonId: lesson.id,
           lessonTitle: lesson.title,
           lessonContent: lesson.content,
           courseTitle,
-          history: messages,
         }),
       });
       const data = await res.json();

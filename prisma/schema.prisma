@@ -26,6 +26,7 @@ model User {
   scripts      GeneratedScript[]
   toolUsages   ToolUsage[]
   plotDocs     PlotDocument[]
+  chatMessages ChatMessage[]
 }
 
 model Course {
@@ -133,4 +134,18 @@ model PlotDocument {
 
   @@index([userId, movieTitle])
   @@index([userId, createdAt])
+}
+
+// AI 助教对话历史：按课时维度持久化学员与 AI 助教的对话
+model ChatMessage {
+  id         String   @id @default(cuid())
+  userId     String
+  lessonId   String
+  role       String   // user | assistant
+  content    String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lessonId, createdAt])
 }

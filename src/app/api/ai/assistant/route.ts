@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getZAI } from "@/lib/ai";
+import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-interface ChatMessage {
-  role: "user" | "assistant";
+interface ChatMessageRow {
+  role: string;
   content: string;
 }
 
 /**
- * 课程 AI 助教：基于课时内容回答学员疑问
- * 把课时内容作为上下文，让 LLM 扮演教学助手解答
+ * 课程 AI 助教：基于课时内容回答学员疑问，并持久化对话历史
  */
 export async function POST(req: NextRequest) {
   try {
-    const { question, lessonTitle, lessonContent, courseTitle, history } =
+    const user = await getCurrentUser();
+    const { question, lessonId, lessonTitle, lessonContent, courseTitle } =
       await req.json();
 
     if (!question?.trim()) {
@@ -26,6 +28,18 @@ export async function POST(req: NextRequest) {
         { error: "课时内容为空，无法解答" },
         { status: 400 }
       );
+    }
+
+    // 加载历史对话（若有 lessonId 且已登录）
+    let history: ChatMessageRow[] = [];
+    if (user && lessonId) {
+      const rows = await db.chatMessage.findMany({
+        where: { userId: user.id, lessonId },
+        orderBy: { createdAt: "asc" },
+        take: 12,
+        select: { role: true, content: true },
+      });
+      history = rows.map((r) => ({ role: r.role, content: r.content }));
     }
 
     const zai = await getZAI();
@@ -51,28 +65,59 @@ ${lessonContent.slice(0, 3000)}
     const messages: { role: string; content: string }[] = [
       { role: "assistant", content: systemPrompt },
     ];
-    // 加入历史对话（最多最近6条）
-    if (Array.isArray(history)) {
-      for (const m of history.slice(-6)) {
-        if (m?.role && m?.content) {
-          messages.push({ role: m.role, content: m.content });
-        }
-      }
+    for (const m of history.slice(-6)) {
+      messages.push({ role: m.role, content: m.content });
     }
     messages.push({ role: "user", content: question.trim() });
 
     const completion = await zai.chat.completions.create({
-      messages: messages as ChatMessage[],
+      messages: messages as { role: "user" | "assistant"; content: string }[],
       thinking: { type: "disabled" },
     });
 
     const answer = completion.choices[0]?.message?.content ?? "";
-    return NextResponse.json({ answer });
+
+    // 持久化用户提问 + AI 回答
+    if (user && lessonId) {
+      await db.chatMessage.createMany({
+        data: [
+          { userId: user.id, lessonId, role: "user", content: question.trim() },
+          { userId: user.id, lessonId, role: "assistant", content: answer },
+        ],
+      });
+    }
+
+    return NextResponse.json({ answer, history: [...history, { role: "user", content: question }, { role: "assistant", content: answer }] });
   } catch (e) {
     console.error("assistant error", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "助教回答失败，请重试" },
       { status: 500 }
     );
+  }
+}
+
+/** 获取某课时的对话历史 */
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    }
+    const { searchParams } = new URL(req.url);
+    const lessonId = searchParams.get("lessonId");
+    if (!lessonId) {
+      return NextResponse.json({ error: "缺少 lessonId" }, { status: 400 });
+    }
+    const messages = await db.chatMessage.findMany({
+      where: { userId: user.id, lessonId },
+      orderBy: { createdAt: "asc" },
+      take: 50,
+      select: { id: true, role: true, content: true, createdAt: true },
+    });
+    return NextResponse.json({ messages });
+  } catch (e) {
+    console.error("assistant history error", e);
+    return NextResponse.json({ error: "获取历史失败" }, { status: 500 });
   }
 }
