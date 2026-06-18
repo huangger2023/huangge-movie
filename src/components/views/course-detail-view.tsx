@@ -10,6 +10,9 @@ import {
   Clock,
   PlayCircle,
   CheckCircle2,
+  CircleCheck,
+  Circle,
+  BookCheck,
   ChevronDown,
   Lock,
   Heart,
@@ -115,6 +118,66 @@ export function CourseDetailView() {
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [enrolling, setEnrolling] = React.useState(false);
   const [favorited, setFavorited] = React.useState(false);
+  // 已完成课时 id 集合（localStorage 持久化）
+  const [completedLessons, setCompletedLessons] = React.useState<Set<string>>(new Set());
+  const [markingLessonId, setMarkingLessonId] = React.useState<string | null>(null);
+
+  // 加载本地存储的完成记录
+  React.useEffect(() => {
+    if (!selectedCourseId) return;
+    try {
+      const raw = localStorage.getItem(`course-progress-${selectedCourseId}`);
+      if (raw) {
+        const arr = JSON.parse(raw) as string[];
+        setCompletedLessons(new Set(arr));
+      }
+    } catch {}
+  }, [selectedCourseId]);
+
+  // 同步到 enrollment.progress
+  const syncProgress = React.useCallback(
+    async (newCompleted: Set<string>) => {
+      if (!enrollment || !course || lessons.length === 0) return;
+      const progress = Math.round((newCompleted.size / lessons.length) * 100);
+      try {
+        const res = await fetch("/api/enrollments", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courseId: course.id,
+            progress,
+            lastLessonId: expandedId,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEnrollment(data.enrollment);
+        }
+      } catch {}
+    },
+    [enrollment, course, lessons, expandedId]
+  );
+
+  const toggleLessonComplete = async (lessonId: string) => {
+    const next = new Set(completedLessons);
+    if (next.has(lessonId)) {
+      next.delete(lessonId);
+    } else {
+      next.add(lessonId);
+    }
+    setCompletedLessons(next);
+    setMarkingLessonId(lessonId);
+    // 持久化到 localStorage
+    try {
+      localStorage.setItem(
+        `course-progress-${selectedCourseId}`,
+        JSON.stringify(Array.from(next))
+      );
+    } catch {}
+    // 同步到后端 enrollment
+    await syncProgress(next);
+    setMarkingLessonId(null);
+  };
 
   const fetchCourse = React.useCallback(async () => {
     if (!selectedCourseId) {
@@ -324,9 +387,31 @@ export function CourseDetailView() {
                       <PlayCircle className="h-4 w-4 text-primary" />
                       课程目录
                     </h2>
-                    <span className="text-xs text-muted-foreground">
-                      共 {lessons.length} 节 · 已报可学全部
-                    </span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>共 {lessons.length} 节</span>
+                      {lessons.reduce((s, l) => s + (l.duration || 0), 0) > 0 && (
+                        <>
+                          <span>·</span>
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="h-3 w-3" />
+                            {(() => {
+                              const total = lessons.reduce((s, l) => s + (l.duration || 0), 0);
+                              const h = Math.floor(total / 60);
+                              const m = total % 60;
+                              return h > 0 ? `${h}小时${m}分` : `${m}分钟`;
+                            })()}
+                          </span>
+                        </>
+                      )}
+                      {lessons.some((l) => l.isPreview) && (
+                        <>
+                          <span>·</span>
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            {lessons.filter((l) => l.isPreview).length} 节试看
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                   <div className="divide-y divide-border/50">
                     {lessons.length === 0 ? (
@@ -343,6 +428,11 @@ export function CourseDetailView() {
                           expanded={expandedId === lesson.id}
                           onClick={() => handleLessonClick(lesson)}
                           courseTitle={course?.title || ""}
+                          completed={completedLessons.has(lesson.id)}
+                          marking={markingLessonId === lesson.id}
+                          onToggleComplete={() => toggleLessonComplete(lesson.id)}
+                          totalLessons={lessons.length}
+                          completedCount={completedLessons.size}
                         />
                       ))
                     )}
@@ -569,6 +659,11 @@ function LessonRow({
   expanded,
   onClick,
   courseTitle,
+  completed,
+  marking,
+  onToggleComplete,
+  totalLessons,
+  completedCount,
 }: {
   lesson: Lesson;
   index: number;
@@ -576,32 +671,55 @@ function LessonRow({
   expanded: boolean;
   onClick: () => void;
   courseTitle: string;
+  completed: boolean;
+  marking: boolean;
+  onToggleComplete: () => void;
+  totalLessons: number;
+  completedCount: number;
 }) {
   const locked = !lesson.isPreview && !enrolled;
   return (
     <div id={`lesson-${lesson.id}`} className="scroll-mt-6">
       <button
         onClick={onClick}
-        className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40"
+        className={cn(
+          "flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/40",
+          completed && "bg-emerald-500/5"
+        )}
       >
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-medium",
-            lesson.isPreview
-              ? "bg-primary/10 text-primary"
-              : locked
-                ? "bg-muted text-muted-foreground"
-                : "bg-primary/10 text-primary"
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-medium transition-all",
+            completed
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : lesson.isPreview
+                ? "bg-primary/10 text-primary"
+                : locked
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-primary/10 text-primary"
           )}
         >
-          {locked ? <Lock className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
+          {completed ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : locked ? (
+            <Lock className="h-4 w-4" />
+          ) : (
+            <PlayCircle className="h-4 w-4" />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-medium">{lesson.title}</span>
+            <span className={cn("truncate text-sm font-medium", completed && "text-muted-foreground line-through")}>
+              {lesson.title}
+            </span>
             {lesson.isPreview && (
               <Badge variant="secondary" className="shrink-0 bg-accent/15 text-[10px] text-accent">
                 试看
+              </Badge>
+            )}
+            {completed && (
+              <Badge variant="outline" className="shrink-0 border-emerald-500/30 text-[10px] text-emerald-600 dark:text-emerald-400">
+                已学
               </Badge>
             )}
           </div>
@@ -639,6 +757,18 @@ function LessonRow({
           className="overflow-hidden"
         >
           <div className="border-t border-border/40 bg-muted/20 px-4 py-3">
+            {/* 进度提示条 */}
+            {!locked && (
+              <div className="mb-3 flex items-center justify-between rounded-md bg-background/60 px-3 py-1.5 text-[11px]">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <BookCheck className="h-3.5 w-3.5 text-primary" />
+                  课程进度：{completedCount} / {totalLessons} 节已完成
+                </span>
+                <span className="font-medium text-primary">
+                  {Math.round((completedCount / totalLessons) * 100)}%
+                </span>
+              </div>
+            )}
             <p className="whitespace-pre-line text-xs leading-6 text-foreground/75">
               {lesson.content || "本节暂无文字内容"}
             </p>
@@ -647,8 +777,38 @@ function LessonRow({
                 <video src={lesson.videoUrl} controls className="w-full rounded-md" />
               </div>
             )}
-            {/* AI 助教 */}
-            {!locked && <LessonAssistant lesson={lesson} courseTitle={courseTitle} />}
+            {/* 完成按钮 + AI 助教 */}
+            {!locked && (
+              <>
+                <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3">
+                  <Button
+                    size="sm"
+                    variant={completed ? "outline" : "default"}
+                    onClick={onToggleComplete}
+                    disabled={marking}
+                    className={cn(
+                      "gap-1.5",
+                      !completed && "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:opacity-90"
+                    )}
+                  >
+                    {marking ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : completed ? (
+                      <Circle className="h-3.5 w-3.5" />
+                    ) : (
+                      <CircleCheck className="h-3.5 w-3.5" />
+                    )}
+                    {marking ? "更新中…" : completed ? "标记为未学" : "标记本节已学"}
+                  </Button>
+                  {completed && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                      ✓ 已完成，进度已同步
+                    </span>
+                  )}
+                </div>
+                <LessonAssistant lesson={lesson} courseTitle={courseTitle} />
+              </>
+            )}
           </div>
         </motion.div>
       )}

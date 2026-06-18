@@ -28,6 +28,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CourseCard, type CourseItem } from "@/components/site/course-card";
 import { useAppStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 
 const AI_TOOLS = [
   {
@@ -66,24 +67,36 @@ const STEPS = [
     step: "01",
     title: "定位赛道",
     desc: "用「人群×情绪×风格」三角定位法，找到你的差异化解说人设。",
+    color: "from-rose-500 to-pink-500",
+    tag: "破冰营 · 第2课",
+    view: "courses" as const,
   },
   {
     icon: Brain,
     step: "02",
     title: "AI生成文案",
     desc: "调用平台AI工具，10分钟产出独家精选解说文案、爆款标题、黄金开头。",
+    color: "from-amber-500 to-orange-500",
+    tag: "AI文案工具",
+    view: "script-generator" as const,
   },
   {
     icon: Mic,
     step: "03",
     title: "配音剪辑",
     desc: "手机也能配出电影级声线，3分钟剪出节奏感，声画双修出质感。",
+    color: "from-fuchsia-500 to-rose-500",
+    tag: "配音剪辑营 · 第5-6课",
+    view: "courses" as const,
   },
   {
     icon: Rocket,
     step: "04",
     title: "发布变现",
     desc: "标题封面标签流量密码+多元变现路径，跑通商业闭环。",
+    color: "from-emerald-500 to-teal-500",
+    tag: "运营变现课",
+    view: "courses" as const,
   },
 ];
 
@@ -525,12 +538,15 @@ export function HomeView() {
               transition={{ duration: 0.4, delay: i * 0.1 }}
               className="relative"
             >
-              <Card className="h-full p-6">
+              <Card
+                onClick={() => setView(s.view)}
+                className="group h-full cursor-pointer p-6 transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-glow-primary"
+              >
                 <div className="mb-4 flex items-center justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className={cn("flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm", s.color)}>
                     <s.icon className="h-5 w-5" />
                   </div>
-                  <span className="text-3xl font-bold text-muted/40">
+                  <span className="text-3xl font-bold text-muted/30 transition-colors group-hover:text-primary/30">
                     {s.step}
                   </span>
                 </div>
@@ -538,6 +554,10 @@ export function HomeView() {
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {s.desc}
                 </p>
+                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-primary opacity-70 transition-opacity group-hover:opacity-100">
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5">{s.tag}</span>
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                </div>
               </Card>
               {i < STEPS.length - 1 && (
                 <ArrowRight className="absolute -right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-muted/40 lg:block" />

@@ -662,3 +662,80 @@ Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
 - 学员：demo@yingshu.com / 123456
 - dev server：http://localhost:3000，lint 0 errors
 - 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）
+
+---
+Task ID: 14 (cron 巡检轮 · 课时管理 + 课程目录打磨 + 学习路径交互)
+Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
+
+## 项目当前状态判断
+项目稳定。dev log 健康，lint 0 errors。所有核心流程可用。本轮重点是补齐管理后台缺失的「课时管理」功能，并打磨课程详情页和首页学习路径体验。
+
+## 本轮工作
+
+### QA 测试 (agent-browser + curl)
+- 首页/课程中心/课程详情/AI文案/创作工具箱/创作工作台/我的学习/管理后台 全部正常，无 console error
+- admin 登录（admin@yingshu.com/admin123）→ 管理后台 → 6 门课程表格正常显示
+- 发现管理后台缺失课时管理（管理员只能改课程信息，无法增删课时内容）
+
+### 新需求1：管理后台「课时管理」功能（核心）
+**痛点**：管理员无法管理课时（31节 seeded 课时无法新增/编辑/删除/排序），课程内容维护需直连数据库。
+**实现**：
+- **后端 API**：
+  - 新建 `/api/courses/[id]/lessons/route.ts`：GET 列表 / POST 新建（自动算 nextOrder）
+  - 新建 `/api/lessons/[lessonId]/route.ts`：PATCH 更新 / DELETE 删除
+- **前端 admin-view.tsx**：
+  - 课程表格操作列新增「管理课时」按钮（ListChecks 图标）
+  - `LessonsManager` 组件（嵌入 Dialog）：
+    - 课时列表：每行显示序号/标题/试看badge/含视频badge/内容预览/时长/顺序
+    - 上移/下移按钮（ChevronUp/Down）交换 order
+    - 编辑/删除按钮
+    - 空状态引导
+  - `LessonForm` 组件（新建/编辑）：
+    - 标题（必填）/内容（讲义，支持多段落，显示字数）/视频URL/时长/试看 Switch
+    - 内嵌在 Dialog 底部，保存后自动刷新列表
+  - 删除二次确认 AlertDialog
+
+### 新需求2：课程详情页目录统计打磨
+**痛点**：原课程目录只显示「共 X 节 · 已报可学全部」，缺少时长信息和试看课时数。
+**实现** (course-detail-view.tsx)：
+- 课程目录 header 重构：
+  - 共 X 节
+  - 总时长（自动换算小时/分钟，如「3小时56分」）
+  - 试看课时数（绿色高亮，如「1 节试看」）
+- 时长用 Clock 图标，试看用绿色文字突出
+
+### 新需求3：首页「学习路径」交互式路线图增强
+**痛点**：原学习路径 4 个卡片只是静态展示，无法跳转，缺少视觉层次。
+**实现** (home-view.tsx)：
+- STEPS 数组扩展：每个步骤加 `color`（渐变色）/`tag`（对应课程或工具）/`view`（跳转目标）
+- 卡片改为可点击 Card：hover -translate-y-1 + border-primary/30 + shadow-glow-primary
+- 图标改为渐变色背景（从灰色单色 → 4 色渐变）
+- 步骤数字 hover 时变 primary 色
+- 卡片底部加 tag badge + ArrowRight（hover 时右移）
+- 点击跳转：定位赛道→courses / AI生成文案→script-generator / 配音剪辑→courses / 发布变现→courses
+
+## 验证结果 (agent-browser + curl)
+- **课时管理**：admin 后台 → 点第一个课程的「管理课时」→ Dialog 显示「课时管理 · AI智能文案创作大师课 / 共 6 节课时」→ 点新增课时 → 填表（标题+内容+时长）→ POST 200 → 列表刷新显示新课时「新增测试课｜QA 测试课时」✓
+- **课时 API**：curl GET /api/courses/{id}/lessons 返回 6 课时；POST 新建成功；DELETE 删除测试课时 200 ✓
+- **课程目录统计**：AI智能文案创作大师课 → 课程目录显示「共 6 节 · 3小时56分 · 1 节试看」✓
+- **学习路径交互**：首页学习路径 → 4 个彩色卡片显示 → 点击「AI生成文案」→ 跳转到 AI 文案生成器 ✓
+- **lint 0 errors**
+
+## 未解决问题/风险
+- 课程 videoUrl 仍大多为 null（管理员现可手动添加，但默认 seed 没有视频）
+- 联网搜索 12.6s 仍偏慢
+- 课时排序交换需要两次 PATCH（可优化为后端批量接口）
+
+## 建议下一阶段优先事项
+1. 工作台编辑器加「从其他项目导入」功能
+2. 联网搜索改 SSE 流式返回
+3. 管理后台加「学员管理」+「订单/收入看板」
+4. 课程详情页加视频播放器优化（支持 videoUrl 字段已有）
+5. AI 助教支持「导出对话」已实现，可加「按课时聚合导出全部对话」
+6. 课时编辑器加 Markdown 预览（当前是纯文本展示）
+
+## 测试账号
+- 管理员：admin@yingshu.com / admin123
+- 学员：demo@yingshu.com / 123456
+- dev server：http://localhost:3000，lint 0 errors
+- 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）

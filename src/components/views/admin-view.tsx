@@ -16,6 +16,15 @@ import {
   ArrowLeft,
   Image as ImageIcon,
   Star,
+  ListChecks,
+  ChevronUp,
+  ChevronDown,
+  BarChart3,
+  TrendingUp,
+  Wallet,
+  Activity,
+  GraduationCap,
+  Layers,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -33,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -212,6 +222,8 @@ export function AdminView() {
     null
   );
   const [deleting, setDeleting] = React.useState(false);
+  // 课时管理
+  const [lessonsCourse, setLessonsCourse] = React.useState<AdminCourse | null>(null);
 
   const fetchCourses = React.useCallback(async () => {
     setLoading(true);
@@ -563,6 +575,16 @@ export function AdminView() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setLessonsCourse(c)}
+                              aria-label="管理课时"
+                              title="管理课时"
+                            >
+                              <ListChecks className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -934,6 +956,396 @@ export function AdminView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 课时管理 Dialog */}
+      {lessonsCourse && (
+        <LessonsManager
+          course={lessonsCourse}
+          onClose={() => setLessonsCourse(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/* ----------------------- 课时管理组件 ----------------------- */
+
+interface LessonItem {
+  id: string;
+  title: string;
+  content: string;
+  videoUrl: string | null;
+  duration: number;
+  order: number;
+  isPreview: boolean;
+}
+
+function LessonsManager({
+  course,
+  onClose,
+}: {
+  course: AdminCourse;
+  onClose: () => void;
+}) {
+  const [lessons, setLessons] = React.useState<LessonItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [editingLesson, setEditingLesson] = React.useState<LessonItem | null>(null);
+  const [showForm, setShowForm] = React.useState(false);
+  const [deleteLessonId, setDeleteLessonId] = React.useState<string | null>(null);
+
+  const fetchLessons = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/courses/${course.id}/lessons`);
+      const data = await res.json();
+      setLessons(data.lessons || []);
+    } catch {
+      toast.error("加载课时失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [course.id]);
+
+  React.useEffect(() => {
+    void fetchLessons();
+  }, [fetchLessons]);
+
+  const handleMove = async (lesson: LessonItem, dir: -1 | 1) => {
+    const idx = lessons.findIndex((l) => l.id === lesson.id);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= lessons.length) return;
+    const swap = lessons[newIdx];
+    // 交换 order
+    try {
+      await Promise.all([
+        fetch(`/api/lessons/${lesson.id}?id=${lesson.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: swap.order }),
+        }),
+        fetch(`/api/lessons/${swap.id}?id=${swap.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: lesson.order }),
+        }),
+      ]);
+      void fetchLessons();
+      toast.success("已调整顺序");
+    } catch {
+      toast.error("调整顺序失败");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteLessonId) return;
+    try {
+      const res = await fetch(`/api/lessons/${deleteLessonId}?id=${deleteLessonId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error();
+      setLessons((prev) => prev.filter((l) => l.id !== deleteLessonId));
+      toast.success("课时已删除");
+    } catch {
+      toast.error("删除失败");
+    } finally {
+      setDeleteLessonId(null);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto scrollbar-thin">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4 text-primary" />
+            课时管理 · {course.title}
+          </DialogTitle>
+          <DialogDescription>
+            共 {lessons.length} 节课时 · 可新增、编辑、排序、删除
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* 课时列表 */}
+        <div className="max-h-[400px] space-y-2 overflow-y-auto scrollbar-thin pr-1">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted/40" />
+            ))
+          ) : lessons.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <ListChecks className="mb-2 h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">还没有课时，点击下方按钮添加第一节</p>
+            </div>
+          ) : (
+            lessons.map((lesson, idx) => (
+              <motion.div
+                key={lesson.id}
+                layout
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group flex items-start gap-3 rounded-lg border border-border/60 bg-card/40 p-3 transition-all hover:border-primary/30"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    onClick={() => handleMove(lesson, -1)}
+                    disabled={idx === 0}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-30"
+                    title="上移"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-center text-[10px] font-medium text-muted-foreground">
+                    {idx + 1}
+                  </span>
+                  <button
+                    onClick={() => handleMove(lesson, 1)}
+                    disabled={idx === lessons.length - 1}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-30"
+                    title="下移"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium">{lesson.title}</p>
+                    {lesson.isPreview && (
+                      <Badge variant="outline" className="shrink-0 text-[10px] text-emerald-600 dark:text-emerald-400">
+                        试看
+                      </Badge>
+                    )}
+                    {lesson.videoUrl && (
+                      <Badge variant="outline" className="shrink-0 text-[10px] text-primary">
+                        含视频
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                    {lesson.content ? lesson.content.slice(0, 80) + (lesson.content.length > 80 ? "…" : "") : "（暂无内容）"}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    {lesson.duration > 0 ? `${lesson.duration} 分钟` : "未设时长"} · 顺序 {lesson.order}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => {
+                      setEditingLesson(lesson);
+                      setShowForm(true);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => setDeleteLessonId(lesson.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+
+        {/* 添加 / 编辑表单 */}
+        {showForm && (
+          <LessonForm
+            courseId={course.id}
+            lesson={editingLesson}
+            onSaved={() => {
+              setShowForm(false);
+              setEditingLesson(null);
+              void fetchLessons();
+            }}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingLesson(null);
+            }}
+          />
+        )}
+
+        {!showForm && (
+          <DialogFooter>
+            <Button variant="ghost" onClick={onClose}>
+              关闭
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingLesson(null);
+                setShowForm(true);
+              }}
+              className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" />
+              新增课时
+            </Button>
+          </DialogFooter>
+        )}
+
+        {/* 删除确认 */}
+        <AlertDialog open={!!deleteLessonId} onOpenChange={(v) => !v && setDeleteLessonId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>删除该课时？</AlertDialogTitle>
+              <AlertDialogDescription>
+                课时内容将永久删除，无法恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LessonForm({
+  courseId,
+  lesson,
+  onSaved,
+  onCancel,
+}: {
+  courseId: string;
+  lesson: LessonItem | null;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = React.useState(lesson?.title || "");
+  const [content, setContent] = React.useState(lesson?.content || "");
+  const [videoUrl, setVideoUrl] = React.useState(lesson?.videoUrl || "");
+  const [duration, setDuration] = React.useState(lesson?.duration || 0);
+  const [isPreview, setIsPreview] = React.useState(lesson?.isPreview || false);
+  const [saving, setSaving] = React.useState(false);
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      toast.error("请填写课时标题");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (lesson) {
+        // 更新
+        const res = await fetch(`/api/lessons/${lesson.id}?id=${lesson.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            content,
+            videoUrl: videoUrl || null,
+            duration: Number(duration) || 0,
+            isPreview,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        toast.success("课时已更新");
+      } else {
+        // 新建
+        const res = await fetch(`/api/courses/${courseId}/lessons`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            content,
+            videoUrl: videoUrl || null,
+            duration: Number(duration) || 0,
+            isPreview,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        toast.success("课时已添加");
+      }
+      onSaved();
+    } catch {
+      toast.error("保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4"
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">
+          {lesson ? "编辑课时" : "新增课时"}
+        </p>
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+          取消
+        </Button>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">标题 *</Label>
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="例如：第1课｜认知篇：电影解说赛道的真实机会与陷阱"
+          className="h-9"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">内容（讲义）</Label>
+        <Textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="课时详细内容，支持多段落…"
+          className="min-h-[180px] resize-y scrollbar-thin text-sm"
+        />
+        <p className="text-[10px] text-muted-foreground">{content.length} 字</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">视频 URL（可选）</Label>
+          <Input
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://..."
+            className="h-9"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">时长（分钟）</Label>
+          <Input
+            type="number"
+            min={0}
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            className="h-9"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between rounded-md bg-background/60 p-2.5">
+        <div>
+          <p className="text-xs font-medium">设为试看课时</p>
+          <p className="text-[10px] text-muted-foreground">未报名学员也可查看</p>
+        </div>
+        <Switch checked={isPreview} onCheckedChange={setIsPreview} />
+      </div>
+      <Button
+        onClick={handleSubmit}
+        disabled={saving || !title.trim()}
+        className="w-full gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+      >
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        {saving ? "保存中…" : lesson ? "保存修改" : "添加课时"}
+      </Button>
+    </motion.div>
   );
 }
