@@ -29,7 +29,6 @@ import {
   FileSearch,
   Library,
   Plus,
-  Table,
   Download,
   ListTree,
   Clock,

@@ -21,12 +21,17 @@ import {
   Sparkles,
   Loader2,
   Video,
+  Bot,
+  Send,
+  MessageSquare,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -324,6 +329,7 @@ export function CourseDetailView() {
                           enrolled={!!enrollment}
                           expanded={expandedId === lesson.id}
                           onClick={() => handleLessonClick(lesson)}
+                          courseTitle={course?.title || ""}
                         />
                       ))
                     )}
@@ -549,12 +555,14 @@ function LessonRow({
   enrolled,
   expanded,
   onClick,
+  courseTitle,
 }: {
   lesson: Lesson;
   index: number;
   enrolled: boolean;
   expanded: boolean;
   onClick: () => void;
+  courseTitle: string;
 }) {
   const locked = !lesson.isPreview && !enrolled;
   return (
@@ -623,10 +631,214 @@ function LessonRow({
             </p>
             {lesson.videoUrl && (
               <div className="mt-3">
-                { }
                 <video src={lesson.videoUrl} controls className="w-full rounded-md" />
               </div>
             )}
+            {/* AI 助教 */}
+            {!locked && <LessonAssistant lesson={lesson} courseTitle={courseTitle} />}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/** 课时 AI 助教：基于课时内容回答学员疑问 */
+interface ChatMsg {
+  role: "user" | "assistant";
+  content: string;
+}
+
+const QUICK_QUESTIONS = [
+  "这节课的核心要点是什么？",
+  "能举个具体例子吗？",
+  "新手最容易踩什么坑？",
+  "这步操作有哪些注意事项？",
+];
+
+function LessonAssistant({
+  lesson,
+  courseTitle,
+}: {
+  lesson: Lesson;
+  courseTitle: string;
+}) {
+  const { user } = useAppStore();
+  const [open, setOpen] = React.useState(false);
+  const [input, setInput] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [messages, setMessages] = React.useState<ChatMsg[]>([]);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, loading]);
+
+  const ask = async (q: string) => {
+    const question = q.trim();
+    if (!question || loading) return;
+    if (!user) {
+      toast.info("请先登录后使用 AI 助教", {
+        description: "登录即可免费向助教提问",
+      });
+      return;
+    }
+    const newMsgs: ChatMsg[] = [
+      ...messages,
+      { role: "user", content: question },
+    ];
+    setMessages(newMsgs);
+    setInput("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/ai/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          lessonTitle: lesson.title,
+          lessonContent: lesson.content,
+          courseTitle,
+          history: messages,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "回答失败");
+      setMessages([...newMsgs, { role: "assistant", content: data.answer }]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "助教回答失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.04] to-accent/[0.04] p-3">
+      {/* 助教标题栏 */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
+          <Bot className="h-4 w-4 text-primary-foreground" />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-foreground">AI 课程助教</p>
+          <p className="text-[10px] text-muted-foreground">
+            基于本节内容，有疑问随时问
+          </p>
+        </div>
+        {open ? (
+          <X className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ duration: 0.2 }}
+          className="overflow-hidden"
+        >
+          {/* 对话区 */}
+          {messages.length > 0 && (
+            <div
+              ref={scrollRef}
+              className="scrollbar-thin mt-3 max-h-64 space-y-2.5 overflow-y-auto pr-1"
+            >
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex gap-2",
+                    m.role === "user" ? "flex-row-reverse" : "flex-row"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px]",
+                      m.role === "user"
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-gradient-to-br from-primary to-accent text-primary-foreground"
+                    )}
+                  >
+                    {m.role === "user" ? "我" : <Bot className="h-3.5 w-3.5" />}
+                  </div>
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-xl px-3 py-2 text-xs leading-relaxed",
+                      m.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card border border-border/60 text-foreground/85"
+                    )}
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex gap-2">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent">
+                    <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                  </div>
+                  <div className="flex items-center gap-1 rounded-xl bg-card border border-border/60 px-3 py-2.5">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 快捷问题 */}
+          {messages.length === 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {QUICK_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => ask(q)}
+                  disabled={loading}
+                  className="rounded-full border border-border/60 bg-card/60 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 输入区 */}
+          <div className="mt-3 flex gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  ask(input);
+                }
+              }}
+              placeholder="向助教提问本节内容…"
+              className="min-h-[40px] resize-none text-xs"
+              rows={1}
+              disabled={loading}
+            />
+            <Button
+              size="sm"
+              onClick={() => ask(input)}
+              disabled={loading || !input.trim()}
+              className="h-9 shrink-0 gap-1 rounded-lg bg-gradient-to-r from-primary to-accent px-2.5 text-primary-foreground"
+            >
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+            </Button>
           </div>
         </motion.div>
       )}

@@ -306,3 +306,55 @@ Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
 2. 爆款标题/黄金开头工具也接 Agent 协作（目前只有完整文案生成器接了）
 3. 添加「创作工作台」概念：把生成的文案/标题/开头/分镜统一到一个项目里管理
 4. 联网搜索改为流式返回（SSE），提升体感速度
+
+---
+Task ID: 8 (cron 巡检轮 · AI 课程助教)
+Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
+
+## 项目当前状态判断
+项目稳定。dev log 健康无报错（之前的 "Fast Refresh full reload" 警告是浏览器缓存的旧编译错误，实际文件已修复）。lint 0 errors。核心流程全部可用。
+
+## 本轮工作
+
+### QA 测试 (agent-browser)
+- 主页/课程中心/课程详情/创作工具箱 全部正常，无 console error
+- 发现并清理：script-generator-view 里残留的未使用 `Table` import（上一轮修复 Clapperboard 重复时遗留）
+
+### 新需求：课程详情页「AI 课程助教」(已完成)
+**痛点**：学员学习课时有疑问没人解答，课程是图文讲义形式缺乏互动。
+**实现**：
+- 新建 `/api/ai/assistant` 后端路由：接收 {question, lessonTitle, lessonContent, courseTitle, history}，把课时内容作为 system prompt 上下文，让 LLM 扮演课程助教，基于课时内容解答疑问（课时有的引用展开，没有的适当补充并说明，无关问题礼貌引导回主题，300字内，口语化鼓励）
+- course-detail-view 新增 `LessonAssistant` 组件，集成在课时展开内容下方（仅未锁定课时显示）：
+  - 折叠式面板，标题栏带 Bot 图标 + "AI 课程助教" + "基于本节内容，有疑问随时问"
+  - 展开后显示：对话区（气泡式，用户右侧 primary 色，助教左侧 card 色，带头像）+ 快捷问题（4个：核心要点/举例/踩坑/注意事项）+ 输入区（Textarea + 发送按钮，Enter 发送）
+  - loading 时显示三点弹跳动画
+  - 支持多轮对话（传 history）
+  - 未登录 toast 提示登录
+  - 自动滚动到最新消息
+- LessonRow 新增 courseTitle prop 透传
+- 设计：玫瑰金渐变边框面板，玻璃态背景，气泡圆角，微交互完整
+
+**验证** (agent-browser)：
+- 登录 demo 用户 → 课程中心 → 打开"破冰营" → 展开第1课 → AI 助教面板显示
+- 点击"这节课的核心要点是什么？"快捷问题 → AI 2.1秒返回，回答基于课时真实内容："赛道现状：纯搬运模式已死，现在需要人设+信息增量+情绪价值...避开三大坑：搬运限流/版权雷区/定位模糊..."（准确引用课时要点）
+- POST /api/ai/assistant 200 in 2.1s
+
+### 清理
+- 删除 script-generator-view 未使用的 `Table` import
+
+## 验证结果
+- lint 0 errors
+- dev server 健康，/api/ai/assistant 200
+- AI 助教：面板展开/快捷问题/真实问答/多轮对话 全部可用
+- 回答准确基于课时内容，非瞎编
+
+## 未解决问题/风险
+- 联网搜索 Agent 模式仍较慢（20-35s）
+- 课程 videoUrl 仍为 null（图文讲义形式）
+- AI 助教无持久化（刷新丢失对话历史），如需保存可加 DB 表
+
+## 建议下一阶段优先事项
+1. 爆款标题/黄金开头工具也接 Agent 协作（目前只有完整文案生成器接了）
+2. AI 助教对话历史持久化（加 ChatMessage 表）
+3. 添加「创作工作台」：把生成的文案/标题/开头/分镜统一到一个项目里管理
+4. 联网搜索改 SSE 流式提升体感速度
