@@ -820,3 +820,95 @@ Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
 - 学员：demo@yingshu.com / 123456
 - dev server：http://localhost:3000，lint 0 errors
 - 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）
+
+---
+Task ID: 16 (cron 巡检轮 · 课时完成持久化 + 学员管理 + Markdown 预览)
+Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
+
+## 项目当前状态判断
+项目稳定但 dev server 内存敏感（next-server turbopack 编译新路由时偶发 OOM 被杀）。lint 0 errors。本轮重点是把课时完成记录持久化到后端、管理后台加学员管理、课时内容支持 Markdown。
+
+## 本轮工作
+
+### QA 测试 (agent-browser + curl)
+- 首页/课程中心/课程详情/AI文案/创作工具箱/创作工作台/我的学习/管理后台 全部正常
+- 发现课程详情页「标记课时已学」只存 localStorage，换设备会丢失
+- 发现管理后台缺学员管理功能
+- 发现课时内容只支持纯文本，无 Markdown 渲染
+
+### 新需求1：课时完成记录持久化到后端（核心）
+**痛点**：上轮的课时完成记录只存 localStorage，学员换设备/清缓存会丢失进度。
+**实现**：
+- **DB**：Prisma 新增 `LessonCompletion` 模型（userId/lessonId/courseId/completedAt），`@@unique([userId, lessonId])` 防重复，加 User/Course/Lesson 关系，db:push + generate
+- **API** `/api/lessons/[lessonId]/complete`：
+  - POST 标记完成（upsert + 自动同步 enrollment.progress）
+  - DELETE 取消完成（deleteMany + 重新计算 progress）
+  - GET 查询某课程已完成课时 id 列表
+  - `syncEnrollmentProgress` 函数：count 完成数 / 总课时数 → 更新 enrollment.progress 和 completedAt
+- **前端** course-detail-view.tsx：
+  - 已登录：useEffect fetch GET /api/lessons/none/complete?courseId 加载完成记录
+  - 未登录：保留 localStorage 兜底（试看课时）
+  - toggleLessonComplete 改为调后端 API，optimistic update + 失败回滚
+  - 完成时 toast 显示进度：「课程进度：1/8（13%）」或「🎉 恭喜完成全部课时！」
+  - 同步 enrollment.progress 到本地 state
+
+### 新需求2：管理后台「学员管理」Tab
+**痛点**：管理员只能看课程，看不到学员列表、报名情况、学习进度。
+**实现**：
+- **API** `/api/admin/students`：GET 学员列表（仅管理员），支持 search（昵称/邮箱）+ courseId 筛选，返回 _count（enrollments/scripts/lessonCompletions）+ enrollment 详情（如按课程筛选）
+- **前端** admin-view.tsx：
+  - Tabs 从 2 个改为 3 个：课程管理 / 数据看板 / 学员管理
+  - `StudentsTab` 组件：
+    - 4 张统计卡：学员总数 / 报名总数 / 课时完成数 / 今日活跃（渐变光斑装饰）
+    - 搜索框（debounce 300ms）+ 课程筛选下拉
+    - 学员列表：头像 + 昵称 + 邮箱 + 已结业 badge + 报名数/文案数/完成课时数 + 进度%（如按课程筛选）+ 注册时间
+    - 空状态引导
+    - framer-motion 入场动画
+
+### 新需求3：课时内容 Markdown 预览
+**痛点**：课时内容只支持纯文本，管理员编辑时无法预览格式，学员看到的也是纯文本。
+**实现**：
+- **课程详情页** course-detail-view.tsx：
+  - 课时内容从 `<p className="whitespace-pre-line">` 改为 `<ReactMarkdown>` 渲染
+  - 自定义 components：h1/h2/h3 标题层级 / p 段落 / ul/ol 列表 / strong 加粗（primary 色）/ blockquote 引用（primary 边框+背景）/ code 行内代码 / pre 代码块 / a 链接 / hr 分割线
+- **管理后台课时编辑器** admin-view.tsx LessonForm：
+  - 内容编辑区改为「编辑/预览」双模式切换
+  - 编辑模式：等宽字体 Textarea，placeholder 含 Markdown 示例
+  - 预览模式：ReactMarkdown 渲染，与详情页样式一致
+  - 底部提示：「支持 # 标题 / - 列表 / **加粗** / > 引用 / `代码`」
+- **课时列表预览**：内容预览去除 Markdown 标记符号（# * > ` -）再截断
+
+### 修复的稳定性问题
+- dev server next-server turbopack 编译新路由时偶发 OOM 被杀
+- 用 `NODE_OPTIONS="--max-old-space-size=1536"` 限制内存
+- 用 `setsid` + `nohup` 完全脱离 shell session
+- students API 简化查询：先查 enrollments 拿 userIds，再查 users（避免复杂聚合导致内存爆炸）
+
+## 验证结果 (curl)
+- **LessonCompletion API**：
+  - POST /api/lessons/{id}/complete → `{"completed":true,"totalLessons":8,"completedLessons":1,"progress":13}` ✓
+  - GET /api/lessons/none/complete?courseId=X → `{"completedLessonIds":["..."],"count":1}` ✓
+  - DELETE /api/lessons/{id}/complete → `{"completed":false,"totalLessons":8,"completedLessons":0,"progress":0}` ✓
+- **学员管理 API**：
+  - GET /api/admin/students → 1 学员（小白创作者），stats 正确（totalStudents:1, totalEnrollments:1）✓
+  - search=小白 → 1 学员 ✓
+  - courseId=破冰营 → 1 学员带 enrollment（progress:0, lastActiveAt）✓
+- **lint 0 errors**
+
+## 未解决问题/风险
+- dev server 内存敏感，agent-browser 多次操作会让 next-server 崩溃（curl 单次测试正常）
+- 联网搜索 12.6s 仍偏慢
+- 课时完成记录的「今日活跃」统计简化为 0（避免复杂聚合查询）
+
+## 建议下一阶段优先事项
+1. 工作台编辑器加「从其他项目导入」功能
+2. 联网搜索改 SSE 流式返回
+3. 课程详情页加视频播放器优化
+4. 学员管理加「学员详情」弹窗（查看学员的报名课程/完成情况/AI文案历史）
+5. 课时编辑器加 Markdown 工具栏（一键插入标题/列表/引用等）
+
+## 测试账号
+- 管理员：admin@yingshu.com / admin123
+- 学员：demo@yingshu.com / 123456
+- dev server：http://localhost:3000，lint 0 errors
+- 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）

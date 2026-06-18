@@ -3,6 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   Star,
@@ -790,9 +791,44 @@ function LessonRow({
                 </span>
               </div>
             )}
-            <p className="whitespace-pre-line text-xs leading-6 text-foreground/75">
-              {lesson.content || "本节暂无文字内容"}
-            </p>
+            <div className="lesson-markdown text-xs leading-6 text-foreground/75">
+              {lesson.content ? (
+                <ReactMarkdown
+                  components={{
+                    h1: ({ children }) => <h3 className="mb-2 mt-3 text-sm font-bold text-foreground">{children}</h3>,
+                    h2: ({ children }) => <h4 className="mb-2 mt-3 text-sm font-bold text-foreground">{children}</h4>,
+                    h3: ({ children }) => <h5 className="mb-1.5 mt-2 text-xs font-semibold text-foreground">{children}</h5>,
+                    p: ({ children }) => <p className="mb-2 leading-6">{children}</p>,
+                    ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1">{children}</ul>,
+                    ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-1">{children}</ol>,
+                    li: ({ children }) => <li className="leading-6">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold text-primary">{children}</strong>,
+                    em: ({ children }) => <em className="italic">{children}</em>,
+                    blockquote: ({ children }) => (
+                      <blockquote className="my-2 border-l-2 border-primary/40 bg-primary/5 px-3 py-1.5 italic">
+                        {children}
+                      </blockquote>
+                    ),
+                    code: ({ children }) => (
+                      <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">{children}</code>
+                    ),
+                    pre: ({ children }) => (
+                      <pre className="my-2 overflow-x-auto rounded-md bg-muted p-3 text-[11px]">{children}</pre>
+                    ),
+                    a: ({ children, href }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:opacity-80">
+                        {children}
+                      </a>
+                    ),
+                    hr: () => <hr className="my-3 border-border/60" />,
+                  }}
+                >
+                  {lesson.content}
+                </ReactMarkdown>
+              ) : (
+                <p className="text-muted-foreground">本节暂无文字内容</p>
+              )}
+            </div>
             {lesson.videoUrl && (
               <div className="mt-3">
                 <video src={lesson.videoUrl} controls className="w-full rounded-md" />

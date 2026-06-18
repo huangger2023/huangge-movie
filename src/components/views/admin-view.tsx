@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 import {
   ShieldCheck,
   Plus,
@@ -1157,7 +1158,7 @@ function LessonsManager({
                     )}
                   </div>
                   <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
-                    {lesson.content ? lesson.content.slice(0, 80) + (lesson.content.length > 80 ? "…" : "") : "（暂无内容）"}
+                    {lesson.content ? lesson.content.replace(/[#*>`-]/g, "").replace(/\s+/g, " ").trim().slice(0, 80) + (lesson.content.length > 80 ? "…" : "") : "（暂无内容）"}
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground">
                     {lesson.duration > 0 ? `${lesson.duration} 分钟` : "未设时长"} · 顺序 {lesson.order}
@@ -1266,6 +1267,7 @@ function LessonForm({
   const [duration, setDuration] = React.useState(lesson?.duration || 0);
   const [isPreview, setIsPreview] = React.useState(lesson?.isPreview || false);
   const [saving, setSaving] = React.useState(false);
+  const [previewMode, setPreviewMode] = React.useState(false);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -1337,14 +1339,71 @@ function LessonForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-xs">内容（讲义）</Label>
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="课时详细内容，支持多段落…"
-          className="min-h-[180px] resize-y scrollbar-thin text-sm"
-        />
-        <p className="text-[10px] text-muted-foreground">{content.length} 字</p>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">内容（讲义，支持 Markdown）</Label>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={previewMode ? "ghost" : "secondary"}
+              onClick={() => setPreviewMode(false)}
+              className="h-6 px-2 text-[11px]"
+            >
+              编辑
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={previewMode ? "secondary" : "ghost"}
+              onClick={() => setPreviewMode(true)}
+              className="h-6 px-2 text-[11px]"
+            >
+              预览
+            </Button>
+          </div>
+        </div>
+        {previewMode ? (
+          <div className="lesson-preview min-h-[180px] max-h-[320px] overflow-y-auto scrollbar-thin rounded-md border border-border/60 bg-background/60 p-3 text-xs leading-6">
+            {content.trim() ? (
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => <h3 className="mb-2 text-sm font-bold">{children}</h3>,
+                  h2: ({ children }) => <h4 className="mb-2 text-sm font-bold">{children}</h4>,
+                  h3: ({ children }) => <h5 className="mb-1.5 text-xs font-semibold">{children}</h5>,
+                  p: ({ children }) => <p className="mb-2">{children}</p>,
+                  ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-1">{children}</ol>,
+                  li: ({ children }) => <li>{children}</li>,
+                  strong: ({ children }) => <strong className="font-semibold text-primary">{children}</strong>,
+                  blockquote: ({ children }) => (
+                    <blockquote className="my-2 border-l-2 border-primary/40 bg-primary/5 px-3 py-1.5 italic">
+                      {children}
+                    </blockquote>
+                  ),
+                  code: ({ children }) => (
+                    <code className="rounded bg-muted px-1 py-0.5 text-[11px] font-mono">{children}</code>
+                  ),
+                  hr: () => <hr className="my-3 border-border/60" />,
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            ) : (
+              <p className="text-muted-foreground">暂无内容，切换到编辑模式开始填写…</p>
+            )}
+          </div>
+        ) : (
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={"课时详细内容，支持 Markdown 格式…\n\n例如：\n## 核心要点\n- 第一点\n- 第二点\n\n> 重点提示：…"}
+            className="min-h-[180px] resize-y scrollbar-thin text-sm font-mono"
+          />
+        )}
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>{content.length} 字</span>
+          <span>支持 # 标题 / - 列表 / **加粗** / &gt; 引用 / `代码`</span>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
