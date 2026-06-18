@@ -1003,3 +1003,82 @@ Agent: 主控 Agent (Z.ai Code) — 用户明确要求
 - 学员：demo@yingshu.com / 123456
 - dev server：http://localhost:3000，lint 0 errors
 - 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）
+
+---
+Task ID: 18 (百度网盘链接展示 + Markdown 工具栏 + 从其他项目导入)
+Agent: 主控 Agent (Z.ai Code)
+
+## 项目当前状态判断
+项目稳定。lint 0 errors。本轮按用户需求做三项功能：课程详情页 videoUrl 改为百度网盘链接展示、课时编辑器加 Markdown 工具栏、工作台编辑器加「从其他项目导入」。
+
+## 本轮工作
+
+### 新需求1：课程详情页 videoUrl 改为百度网盘链接展示
+**痛点**：用户课程视频存放在百度网盘，不需要在线播放。原 `<video>` 播放器无法播放网盘链接，需改为链接展示卡。
+**实现** (course-detail-view.tsx)：
+- **BaiduPanCard 组件**（约 120 行）：
+  - 解析网盘链接 + 提取码：支持 `?pwd=xxxx` 格式 / `提取码: xxxx` 格式 / 多行格式
+  - 顶部条：网盘图标（Cloud）+ "百度网盘资源" 标题 + 说明
+  - 链接区：等宽字体显示链接 + 复制链接按钮 + 打开链接按钮（新标签页）
+  - 提取码区：KeyRound 图标 + 提取码（amber 色 + 等宽字体 + 字间距）+ 复制提取码按钮 + 一键复制全部按钮
+  - 无提取码时显示提示
+- 课时列表的「视频」标识改为「网盘」（Cloud 图标，primary 色）
+- 管理后台课时编辑器：
+  - 「视频 URL」改为「百度网盘链接」
+  - placeholder 改为 `https://pan.baidu.com/s/xxxx?pwd=abcd`
+  - 加说明「支持带提取码的链接，自动解析展示」
+  - 课时列表「含视频」badge 改为「网盘」+ Cloud 图标
+
+### 新需求2：课时编辑器加 Markdown 工具栏
+**痛点**：管理员编辑课时内容时需手敲 Markdown 语法，效率低。
+**实现** (admin-view.tsx)：
+- **MarkdownToolbar 组件**（约 90 行）：
+  - 11 个工具按钮：H1/H2/H3 标题 / 加粗 / 斜体 / 无序列表 / 有序列表 / 引用 / 行内代码 / 链接 / 分割线
+  - `insert(before, after, placeholder)`：在光标位置插入包裹文本（如 **加粗**）
+  - `insertLinePrefix(prefix)`：在行首插入前缀（如 # / - / >）
+  - `insertBlock(block)`：在光标处插入新块（如分割线）
+  - 操作后自动 focus + 还原光标位置
+- LessonForm：
+  - 加 `contentRef`（textarea ref）
+  - 编辑模式时在 Textarea 上方显示工具栏
+  - Textarea 加 ref + 等宽字体
+  - 用 useCallback 包装 insert 函数避免重渲染
+  - eslint-disable react-hooks/refs（误判）
+
+### 新需求3：工作台编辑器加「从其他项目导入」
+**痛点**：用户做系列电影时，想把 A 项目的文案/标题/开头导入到 B 项目，需手动复制。
+**实现** (workspace-view.tsx)：
+- **ImportFromProjectDialog 组件**（约 150 行）：
+  - 获取所有工作台项目（排除当前项目）
+  - 搜索框按电影名筛选
+  - 列表项：彩色电影图标 + 电影名 + 类型 + 该字段字数 + 内容预览
+  - 该字段为空时项目变灰 + 「无可导入内容」
+  - 有内容时显示 amber 警告「导入将覆盖当前项目的XX（N 字）」
+  - 点击导入：调 onImport → 写入本地 state + save 到后端 + toast 反馈
+- WorkspaceEditor：
+  - 加 importOpen / importField state
+  - 在「用AI生成」按钮旁加「从其他项目导入」按钮（ArrowLeftRight 图标，accent 色）
+  - onImport 回调：根据 field 选对应 setter + save + toast
+  - FIELD_LABEL 常量映射
+
+## 验证结果 (curl)
+- **百度网盘链接**：POST 创建带 `videoUrl: "https://pan.baidu.com/s/1abc123def?pwd=xy9z"` 的课时 → 200 ✓，videoUrl 正确保存
+- **删除测试课时**：DELETE /api/lessons/{id} → 200 ✓
+- **lint 0 errors**
+
+## 未解决问题/风险
+- dev server 内存敏感，连续多次 curl 请求会让 next-server 崩溃（单次测试正常）
+- BaiduPanCard 的提取码解析支持 3 种格式，但可能还有边缘情况
+- Markdown 工具栏的 react-hooks/refs lint 误判已用 eslint-disable 处理
+
+## 建议下一阶段优先事项
+1. 课程详情页加「百度网盘批量提取」入口（管理员一键获取所有课时网盘链接）
+2. 工作台加「批量导出」功能（选中多个项目导出为 zip）
+3. AI 助教加「按课时聚合导出全部对话」
+4. 课时编辑器加 Markdown 实时预览（已有切换预览，可加分屏模式）
+
+## 测试账号
+- 管理员：admin@yingshu.com / admin123
+- 学员：demo@yingshu.com / 123456
+- dev server：http://localhost:3000，lint 0 errors
+- 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）

@@ -31,6 +31,10 @@ import {
   X,
   Trash2,
   Download,
+  Cloud,
+  Copy,
+  ExternalLink,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -757,9 +761,9 @@ function LessonRow({
               </>
             )}
             {lesson.videoUrl && (
-              <span className="flex items-center gap-0.5">
-                <Video className="h-3 w-3" />
-                视频
+              <span className="flex items-center gap-0.5 text-primary">
+                <Cloud className="h-3 w-3" />
+                网盘
               </span>
             )}
           </div>
@@ -829,11 +833,7 @@ function LessonRow({
                 <p className="text-muted-foreground">本节暂无文字内容</p>
               )}
             </div>
-            {lesson.videoUrl && (
-              <div className="mt-3">
-                <video src={lesson.videoUrl} controls className="w-full rounded-md" />
-              </div>
-            )}
+            {lesson.videoUrl && <BaiduPanCard url={lesson.videoUrl} />}
             {/* 完成按钮 + AI 助教 */}
             {!locked && (
               <>
@@ -1218,5 +1218,158 @@ function DetailSkeleton() {
         <Skeleton className="h-96 w-full rounded-xl" />
       </div>
     </div>
+  );
+}
+
+/** 百度网盘链接展示卡：解析 url + pwd，展示链接 + 提取码 + 复制按钮 */
+function BaiduPanCard({ url }: { url: string }) {
+  // 解析提取码：支持 ?pwd=xxxx 或 提取码: xxxx 格式
+  const parsePanInfo = (raw: string) => {
+    let link = raw.trim();
+    let pwd = "";
+    // ?pwd=xxxx 格式
+    const pwdMatch = link.match(/[?&]pwd=([a-zA-Z0-9]{4})/);
+    if (pwdMatch) {
+      pwd = pwdMatch[1];
+      link = link.replace(/[?&]pwd=[a-zA-Z0-9]{4}/, "");
+    }
+    // 提取码: xxxx 格式（可能在 url 后面用空格或换行分隔）
+    const pwdMatch2 = raw.match(/提取码[:：]\s*([a-zA-Z0-9]{4})/);
+    if (pwdMatch2 && !pwd) {
+      pwd = pwdMatch2[1];
+    }
+    // 多行情况：链接和提取码分行
+    const lines = raw.split(/[\s\n]+/).filter(Boolean);
+    if (lines.length > 1 && !pwd) {
+      const pwdLine = lines.find((l) => /提取码[:：]\s*([a-zA-Z0-9]{4})/.test(l));
+      if (pwdLine) {
+        const m = pwdLine.match(/提取码[:：]\s*([a-zA-Z0-9]{4})/);
+        if (m) pwd = m[1];
+      }
+      link = lines.find((l) => l.startsWith("http")) || link;
+    }
+    return { link, pwd };
+  };
+
+  const { link, pwd } = parsePanInfo(url);
+  const isBaiduPan = /pan\.baidu\.com/.test(link);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("网盘链接已复制");
+    } catch {
+      toast.error("复制失败，请手动复制");
+    }
+  };
+
+  const copyPwd = async () => {
+    if (!pwd) return;
+    try {
+      await navigator.clipboard.writeText(pwd);
+      toast.success("提取码已复制");
+    } catch {
+      toast.error("复制失败");
+    }
+  };
+
+  const copyAll = async () => {
+    const text = pwd ? `${link}\n提取码: ${pwd}` : link;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("链接 + 提取码已复制");
+    } catch {
+      toast.error("复制失败");
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-3 overflow-hidden rounded-lg border border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5"
+    >
+      {/* 顶部条 */}
+      <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/5 px-3 py-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent text-primary-foreground">
+          <Cloud className="h-4 w-4" />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-foreground">
+            {isBaiduPan ? "百度网盘资源" : "网盘资源"}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            课时视频存放在网盘，点击链接前往下载/在线观看
+          </p>
+        </div>
+      </div>
+
+      {/* 链接区 */}
+      <div className="space-y-2 p-3">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1 rounded-md border border-border/60 bg-background/60 px-2.5 py-1.5">
+            <p className="truncate font-mono text-[11px] text-foreground/80" title={link}>
+              {link}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyLink}
+            className="h-8 shrink-0 gap-1 px-2 text-[11px]"
+            title="复制链接"
+          >
+            <Copy className="h-3 w-3" />
+            链接
+          </Button>
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            title="在新标签页打开"
+          >
+            <ExternalLink className="h-3 w-3" />
+            打开
+          </a>
+        </div>
+
+        {/* 提取码区 */}
+        {pwd ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <KeyRound className="h-3 w-3" />
+              提取码
+            </div>
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-mono text-xs font-semibold tracking-wider text-amber-600 dark:text-amber-400">
+              {pwd}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={copyPwd}
+              className="h-8 gap-1 px-2 text-[11px]"
+              title="复制提取码"
+            >
+              <Copy className="h-3 w-3" />
+              复制
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={copyAll}
+              className="ml-auto h-8 gap-1 px-2 text-[11px] text-primary"
+              title="一键复制链接 + 提取码"
+            >
+              一键复制全部
+            </Button>
+          </div>
+        ) : (
+          <p className="text-[10px] text-muted-foreground">
+            💡 提示：如需提取码，请联系课程管理员或在课时内容中查看
+          </p>
+        )}
+      </div>
+    </motion.div>
   );
 }

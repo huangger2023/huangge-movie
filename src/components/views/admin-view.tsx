@@ -28,6 +28,18 @@ import {
   Layers,
   BookCheck,
   Search,
+  Cloud,
+  Heading1,
+  Heading2,
+  Heading3,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
+  Link as LinkIcon,
+  Minus,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -1152,8 +1164,9 @@ function LessonsManager({
                       </Badge>
                     )}
                     {lesson.videoUrl && (
-                      <Badge variant="outline" className="shrink-0 text-[10px] text-primary">
-                        含视频
+                      <Badge variant="outline" className="shrink-0 gap-0.5 text-[10px] text-primary">
+                        <Cloud className="h-2.5 w-2.5" />
+                        网盘
                       </Badge>
                     )}
                   </div>
@@ -1268,6 +1281,7 @@ function LessonForm({
   const [isPreview, setIsPreview] = React.useState(lesson?.isPreview || false);
   const [saving, setSaving] = React.useState(false);
   const [previewMode, setPreviewMode] = React.useState(false);
+  const contentRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -1362,6 +1376,10 @@ function LessonForm({
             </Button>
           </div>
         </div>
+        {/* Markdown 工具栏（仅编辑模式显示） */}
+        {!previewMode && (
+          <MarkdownToolbar textareaRef={contentRef} onChange={setContent} />
+        )}
         {previewMode ? (
           <div className="lesson-preview min-h-[180px] max-h-[320px] overflow-y-auto scrollbar-thin rounded-md border border-border/60 bg-background/60 p-3 text-xs leading-6">
             {content.trim() ? (
@@ -1394,6 +1412,7 @@ function LessonForm({
           </div>
         ) : (
           <Textarea
+            ref={contentRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={"课时详细内容，支持 Markdown 格式…\n\n例如：\n## 核心要点\n- 第一点\n- 第二点\n\n> 重点提示：…"}
@@ -1407,13 +1426,16 @@ function LessonForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">视频 URL（可选）</Label>
+          <Label className="text-xs">百度网盘链接（可选）</Label>
           <Input
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="https://..."
-            className="h-9"
+            placeholder="https://pan.baidu.com/s/xxxx?pwd=abcd"
+            className="h-9 font-mono text-[11px]"
           />
+          <p className="text-[10px] text-muted-foreground">
+            支持带提取码的链接，自动解析展示
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">时长（分钟）</Label>
@@ -1972,6 +1994,100 @@ function StudentsTab({ courses }: { courses: AdminCourse[] }) {
           </div>
         )}
       </Card>
+    </div>
+  );
+}
+
+/* ----------------------- Markdown 工具栏 ----------------------- */
+
+interface MarkdownToolbarProps {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  onChange: (value: string) => void;
+}
+
+function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolbarProps) {
+  /** 在光标位置插入文本（或在选区前后包裹） */
+  const insert = React.useCallback((before: string, after = "", placeholder = "") => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const value = ta.value;
+    const selected = value.slice(start, end) || placeholder;
+    const newValue = value.slice(0, start) + before + selected + after + value.slice(end);
+    onChange(newValue);
+    // 还原光标位置
+    requestAnimationFrame(() => {
+      ta.focus();
+      const newStart = start + before.length;
+      const newEnd = newStart + selected.length;
+      ta.setSelectionRange(newStart, newEnd);
+    });
+  }, [textareaRef, onChange]);
+
+  /** 在行首插入前缀（如 # / - / >） */
+  const insertLinePrefix = React.useCallback((prefix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const value = ta.value;
+    // 找到当前行开头
+    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+    const newValue = value.slice(0, lineStart) + prefix + value.slice(lineStart);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + prefix.length, end + prefix.length);
+    });
+  }, [textareaRef, onChange]);
+
+  /** 在光标处插入新行 */
+  const insertBlock = React.useCallback((block: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const value = ta.value;
+    const prevChar = start > 0 ? value[start - 1] : "";
+    const needNewline = prevChar && prevChar !== "\n";
+    const newValue = value.slice(0, start) + (needNewline ? "\n" : "") + block + value.slice(start);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const newStart = start + (needNewline ? 1 : 0) + block.length;
+      ta.setSelectionRange(newStart, newStart);
+    });
+  }, [textareaRef, onChange]);
+
+  const tools = [
+    { icon: Heading1, title: "一级标题", action: () => insertLinePrefix("# ") },
+    { icon: Heading2, title: "二级标题", action: () => insertLinePrefix("## ") },
+    { icon: Heading3, title: "三级标题", action: () => insertLinePrefix("### ") },
+    { icon: Bold, title: "加粗", action: () => insert("**", "**", "加粗文字") },
+    { icon: Italic, title: "斜体", action: () => insert("*", "*", "斜体文字") },
+    { icon: List, title: "无序列表", action: () => insertLinePrefix("- ") },
+    { icon: ListOrdered, title: "有序列表", action: () => insertLinePrefix("1. ") },
+    { icon: Quote, title: "引用", action: () => insertLinePrefix("> ") },
+    { icon: Code, title: "行内代码", action: () => insert("`", "`", "code") },
+    { icon: LinkIcon, title: "链接", action: () => insert("[", "](https://)", "链接文字") },
+    { icon: Minus, title: "分割线", action: () => insertBlock("\n---\n") },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-0.5 rounded-md border border-border/60 bg-muted/30 p-1">
+      {/* eslint-disable react-hooks/refs */}
+      {tools.map((t, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={t.action}
+          title={t.title}
+          className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-background hover:text-primary"
+        >
+          <t.icon className="h-3.5 w-3.5" />
+        </button>
+      ))}
+      {/* eslint-enable react-hooks/refs */}
     </div>
   );
 }

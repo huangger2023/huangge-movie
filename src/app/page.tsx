@@ -1,19 +1,22 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
 import { useAppStore } from "@/lib/store";
-import { HomeView } from "@/components/views/home-view";
-import { CoursesView } from "@/components/views/courses-view";
-import { CourseDetailView } from "@/components/views/course-detail-view";
-import { ScriptGeneratorView } from "@/components/views/script-generator-view";
-import { ToolsView } from "@/components/views/tools-view";
-import { DashboardView } from "@/components/views/dashboard-view";
-import { AdminView } from "@/components/views/admin-view";
-import { AuthView } from "@/components/views/auth-view";
-import { WorkspaceView } from "@/components/views/workspace-view";
 import { toast } from "sonner";
+
+// 所有视图懒加载，避免 SSR 时编译所有组件导致内存爆炸
+const HomeView = dynamic(() => import("@/components/views/home-view").then(m => ({ default: m.HomeView })), { ssr: false });
+const CoursesView = dynamic(() => import("@/components/views/courses-view").then(m => ({ default: m.CoursesView })), { ssr: false });
+const CourseDetailView = dynamic(() => import("@/components/views/course-detail-view").then(m => ({ default: m.CourseDetailView })), { ssr: false });
+const ScriptGeneratorView = dynamic(() => import("@/components/views/script-generator-view").then(m => ({ default: m.ScriptGeneratorView })), { ssr: false });
+const ToolsView = dynamic(() => import("@/components/views/tools-view").then(m => ({ default: m.ToolsView })), { ssr: false });
+const DashboardView = dynamic(() => import("@/components/views/dashboard-view").then(m => ({ default: m.DashboardView })), { ssr: false });
+const AdminView = dynamic(() => import("@/components/views/admin-view").then(m => ({ default: m.AdminView })), { ssr: false });
+const AuthView = dynamic(() => import("@/components/views/auth-view").then(m => ({ default: m.AuthView })), { ssr: false });
+const WorkspaceView = dynamic(() => import("@/components/views/workspace-view").then(m => ({ default: m.WorkspaceView })), { ssr: false });
 
 export default function Page() {
   const view = useAppStore((s) => s.view);

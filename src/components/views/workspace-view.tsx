@@ -24,6 +24,7 @@ import {
   Search,
   Filter,
   CopyPlus,
+  ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
@@ -846,6 +847,9 @@ function WorkspaceEditor({
   const [storyboard, setStoryboard] = React.useState(workspace.storyboard || "");
   const [notes, setNotes] = React.useState(workspace.notes || "");
   const [status, setStatus] = React.useState(workspace.status);
+  // 从其他项目导入 dialog
+  const [importOpen, setImportOpen] = React.useState(false);
+  const [importField, setImportField] = React.useState<"script" | "titles" | "hooks" | "storyboard" | "notes">("script");
 
   // 防抖保存
   const save = React.useCallback(
@@ -1047,6 +1051,18 @@ function WorkspaceEditor({
                       用AI生成
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 px-2 text-xs"
+                    onClick={() => {
+                      setImportField(activeTab);
+                      setImportOpen(true);
+                    }}
+                  >
+                    <ArrowLeftRight className="h-3 w-3 text-accent" />
+                    从其他项目导入
+                  </Button>
                 </div>
               </div>
               <Textarea
@@ -1076,6 +1092,195 @@ function WorkspaceEditor({
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* 从其他项目导入 Dialog */}
+      <ImportFromProjectDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        currentWorkspaceId={workspace.id}
+        field={importField}
+        onImport={async (sourceWs, field) => {
+          const value = (sourceWs[field] as string) || "";
+          if (!value.trim()) {
+            toast.error("源项目该字段为空");
+            return;
+          }
+          // 写入本地 + 后端
+          const setter = field === "script" ? setScript : field === "titles" ? setTitles : field === "hooks" ? setHooks : field === "storyboard" ? setStoryboard : setNotes;
+          setter(value);
+          await save(field, value);
+          toast.success(`已从「${sourceWs.movieTitle}」导入${FIELD_LABEL[field]}`, {
+            description: `${value.length} 字`,
+          });
+          setImportOpen(false);
+        }}
+      />
     </div>
+  );
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  script: "解说文案",
+  titles: "爆款标题",
+  hooks: "黄金开头",
+  storyboard: "分镜表",
+  notes: "创作笔记",
+};
+
+/** 从其他项目导入 Dialog */
+function ImportFromProjectDialog({
+  open,
+  onOpenChange,
+  currentWorkspaceId,
+  field,
+  onImport,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentWorkspaceId: string;
+  field: "script" | "titles" | "hooks" | "storyboard" | "notes";
+  onImport: (source: WorkspaceItem & { [k: string]: string | null }, field: typeof field) => Promise<void>;
+}) {
+  const [workspaces, setWorkspaces] = React.useState<WorkspaceItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [importing, setImporting] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    fetch("/api/workspaces")
+      .then((r) => r.json())
+      .then((d) => setWorkspaces((d.workspaces || []).filter((w: WorkspaceItem) => w.id !== currentWorkspaceId)))
+      .catch(() => toast.error("获取项目列表失败"))
+      .finally(() => setLoading(false));
+  }, [open, currentWorkspaceId]);
+
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return workspaces;
+    return workspaces.filter((w) => w.movieTitle.toLowerCase().includes(q));
+  }, [workspaces, search]);
+
+  const handleImport = async (ws: WorkspaceItem) => {
+    setImporting(ws.id);
+    try {
+      await onImport(ws as WorkspaceItem & { [k: string]: string | null }, field);
+    } finally {
+      setImporting(null);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4 text-accent" />
+            从其他项目导入{FIELD_LABEL[field]}
+          </DialogTitle>
+          <DialogDescription>
+            选择另一个项目，将其{FIELD_LABEL[field]}内容导入到当前项目（会覆盖现有内容）
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="搜索项目（电影名）…"
+            className="h-9 pl-9"
+          />
+        </div>
+
+        <div className="max-h-[420px] min-h-[200px] space-y-2 overflow-y-auto scrollbar-thin pr-1">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted/40" />
+            ))
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <ArrowLeftRight className="mb-2 h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                {search ? "未找到匹配的项目" : "没有其他项目可导入"}
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence initial={false}>
+              {filtered.map((ws) => {
+                const fieldValue = (ws[field] as string) || "";
+                const hasField = fieldValue.trim().length > 0;
+                const coverColor = COLORS.find((c) => c.id === ws.coverColor) || COLORS[0];
+                return (
+                  <motion.div
+                    key={ws.id}
+                    layout
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                  >
+                    <Card
+                      className={cn(
+                        "group relative cursor-pointer overflow-hidden p-3 transition-all hover:border-accent/40",
+                        !hasField && "opacity-60"
+                      )}
+                      onClick={() => hasField && importing !== ws.id && handleImport(ws)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white", coverColor.cls)}>
+                          <Film className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold">{ws.movieTitle}</p>
+                            <Badge variant="outline" className="shrink-0 text-[10px]">{ws.genre}</Badge>
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {FIELD_LABEL[field]}：
+                            {hasField ? (
+                              <span className="text-emerald-600 dark:text-emerald-400">{fieldValue.length} 字</span>
+                            ) : (
+                              <span>空</span>
+                            )}
+                          </p>
+                          {hasField && (
+                            <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">
+                              {fieldValue.slice(0, 60)}…
+                            </p>
+                          )}
+                        </div>
+                        <div className="shrink-0">
+                          {importing === ws.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                          ) : hasField ? (
+                            <span className="flex items-center gap-1 text-[11px] text-accent">
+                              导入
+                              <ArrowLeftRight className="h-3 w-3" />
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">无可导入内容</span>
+                          )}
+                        </div>
+                      </div>
+                      {hasField && (
+                        <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-300">
+                          <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+                          <span>导入将覆盖当前项目的{FIELD_LABEL[field]}（{(fieldValue).length} 字）</span>
+                        </div>
+                      )}
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
