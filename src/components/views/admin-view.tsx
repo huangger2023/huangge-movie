@@ -1,0 +1,939 @@
+"use client";
+
+import * as React from "react";
+import { motion } from "framer-motion";
+import {
+  ShieldCheck,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Crown,
+  Users,
+  DollarSign,
+  BookOpen,
+  AlertTriangle,
+  ArrowLeft,
+  Image as ImageIcon,
+  Star,
+} from "lucide-react";
+import { useAppStore } from "@/lib/store";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+
+interface AdminCourse {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  description: string;
+  coverImage: string;
+  category: string;
+  level: string;
+  price: number;
+  originalPrice: number | null;
+  isFree: boolean;
+  isFeatured: boolean;
+  isPublished: boolean;
+  instructor: string;
+  instructorBio: string | null;
+  tags: string;
+  highlights: string;
+  studentsCount: number;
+  _count?: { lessons: number; enrollments: number };
+}
+
+interface CourseFormState {
+  title: string;
+  subtitle: string;
+  description: string;
+  coverImage: string;
+  category: string;
+  level: string;
+  price: string;
+  originalPrice: string;
+  isFree: boolean;
+  isFeatured: boolean;
+  instructor: string;
+  instructorBio: string;
+  tags: string;
+  highlights: string;
+}
+
+const EMPTY_FORM: CourseFormState = {
+  title: "",
+  subtitle: "",
+  description: "",
+  coverImage: "/covers/course-1.png",
+  category: "实战",
+  level: "中级",
+  price: "0",
+  originalPrice: "",
+  isFree: false,
+  isFeatured: false,
+  instructor: "",
+  instructorBio: "",
+  tags: "",
+  highlights: "",
+};
+
+const CATEGORIES = ["入门", "进阶", "实战", "高阶", "运营"];
+const LEVELS = ["初级", "中级", "高级"];
+const COVER_PRESETS = [
+  "/covers/course-1.png",
+  "/covers/course-2.png",
+  "/covers/course-3.png",
+  "/covers/course-4.png",
+  "/covers/course-5.png",
+  "/covers/course-6.png",
+];
+
+const LEVEL_STYLE: Record<string, string> = {
+  初级: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  中级: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  高级: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+};
+
+function courseToForm(c: AdminCourse): CourseFormState {
+  let tagsArr: string[] = [];
+  let highlightsArr: string[] = [];
+  try {
+    tagsArr = JSON.parse(c.tags || "[]");
+  } catch {
+    tagsArr = [];
+  }
+  try {
+    highlightsArr = JSON.parse(c.highlights || "[]");
+  } catch {
+    highlightsArr = [];
+  }
+  return {
+    title: c.title || "",
+    subtitle: c.subtitle || "",
+    description: c.description || "",
+    coverImage: c.coverImage || COVER_PRESETS[0],
+    category: c.category || "实战",
+    level: c.level || "中级",
+    price: String(c.price ?? 0),
+    originalPrice:
+      c.originalPrice != null ? String(c.originalPrice) : "",
+    isFree: !!c.isFree,
+    isFeatured: !!c.isFeatured,
+    instructor: c.instructor || "",
+    instructorBio: c.instructorBio || "",
+    tags: Array.isArray(tagsArr) ? tagsArr.join(", ") : "",
+    highlights: Array.isArray(highlightsArr)
+      ? highlightsArr.join("\n")
+      : "",
+  };
+}
+
+function formToBody(form: CourseFormState) {
+  return {
+    title: form.title.trim(),
+    subtitle: form.subtitle.trim() || null,
+    description: form.description.trim(),
+    coverImage: form.coverImage,
+    category: form.category,
+    level: form.level,
+    price: Number(form.price) || 0,
+    originalPrice: form.originalPrice.trim()
+      ? Number(form.originalPrice)
+      : null,
+    isFree: form.isFree,
+    isFeatured: form.isFeatured,
+    instructor: form.instructor.trim() || "影述学院导师",
+    instructorBio: form.instructorBio.trim() || null,
+    tags: form.tags
+      .split(/[，,]/)
+      .map((t) => t.trim())
+      .filter(Boolean),
+    highlights: form.highlights
+      .split(/\n/)
+      .map((t) => t.trim())
+      .filter(Boolean),
+  };
+}
+
+export function AdminView() {
+  const { user, setView } = useAppStore();
+  const [courses, setCourses] = React.useState<AdminCourse[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [form, setForm] = React.useState<CourseFormState>(EMPTY_FORM);
+  const [saving, setSaving] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<AdminCourse | null>(
+    null
+  );
+  const [deleting, setDeleting] = React.useState(false);
+
+  const fetchCourses = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/courses?limit=100");
+      const data = await res.json();
+      setCourses(data.courses || []);
+    } catch {
+      toast.error("加载课程列表失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (user?.role === "ADMIN") {
+      fetchCourses();
+    } else {
+      setLoading(false);
+    }
+  }, [user, fetchCourses]);
+
+  // 权限校验
+  if (!user || user.role !== "ADMIN") {
+    return (
+      <div className="relative min-h-[70vh] overflow-hidden">
+        <div className="absolute inset-0 bg-cinema-radial" />
+        <div className="relative mx-auto flex max-w-md flex-col items-center justify-center px-4 py-20 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+          >
+            <ShieldCheck className="h-10 w-10" />
+          </motion.div>
+          <h2 className="mb-2 text-2xl font-bold">无访问权限</h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            该页面仅限管理员访问，请使用管理员账号登录后重试
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setView("home")}
+            >
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              返回首页
+            </Button>
+            {!user && (
+              <Button
+                onClick={() => setView("auth")}
+                className="bg-gradient-to-r from-primary to-accent text-primary-foreground"
+              >
+                去登录
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const totalStudents = courses.reduce(
+    (sum, c) => sum + (c.studentsCount || 0),
+    0
+  );
+  const totalRevenue = courses.reduce(
+    (sum, c) => sum + (c.isFree ? 0 : (c.price || 0) * (c.studentsCount || 0)),
+    0
+  );
+
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (c: AdminCourse) => {
+    setForm(courseToForm(c));
+    setEditingId(c.id);
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim()) {
+      toast.error("请填写课程标题");
+      return;
+    }
+    if (!form.description.trim()) {
+      toast.error("请填写课程描述");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body = formToBody(form);
+      const res = editingId
+        ? await fetch(`/api/courses/${editingId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+        : await fetch("/api/courses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error || "保存失败");
+        return;
+      }
+      toast.success(editingId ? "课程已更新" : "课程已创建");
+      setDialogOpen(false);
+      fetchCourses();
+    } catch {
+      toast.error("网络错误，保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/courses/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error || "删除失败");
+        return;
+      }
+      toast.success(`已删除「${deleteTarget.title}」`);
+      setCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    } catch {
+      toast.error("网络错误，删除失败");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const stats = [
+    {
+      icon: BookOpen,
+      label: "课程总数",
+      value: String(courses.length),
+      tint: "bg-rose-500/10 text-rose-500",
+    },
+    {
+      icon: Users,
+      label: "累计学员",
+      value: totalStudents.toLocaleString(),
+      tint: "bg-amber-500/10 text-amber-500",
+    },
+    {
+      icon: DollarSign,
+      label: "收入估算",
+      value: `¥${totalRevenue.toLocaleString()}`,
+      tint: "bg-emerald-500/10 text-emerald-500",
+    },
+  ];
+
+  return (
+    <div className="relative min-h-[70vh]">
+      <div className="absolute inset-x-0 top-0 h-48 bg-cinema-radial" />
+      <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-glow-primary">
+                <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <Badge className="bg-accent text-accent-foreground">
+                <Crown className="mr-1 h-3 w-3" />
+                管理员
+              </Badge>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              管理后台 · 课程管理
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              管理平台所有课程内容、价格与上架状态
+            </p>
+          </div>
+          <Button
+            onClick={openCreate}
+            className="bg-gradient-to-r from-primary to-accent text-primary-foreground"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            新建课程
+          </Button>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3"
+        >
+          {stats.map((s) => (
+            <Card key={s.label} className="p-5">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-lg",
+                    s.tint
+                  )}
+                >
+                  <s.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold tracking-tight">
+                    {loading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      s.value
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {s.label}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </motion.div>
+
+        {/* Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="mt-6"
+        >
+          <Card className="p-0">
+            <CardHeader className="border-b px-5 py-4">
+              <CardTitle className="text-base">课程列表</CardTitle>
+              <CardDescription className="text-xs">
+                共 {courses.length} 门已发布课程
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="space-y-2 p-5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-12 animate-pulse rounded-md bg-muted/40"
+                    />
+                  ))}
+                </div>
+              ) : courses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                  <BookOpen className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">
+                    暂无课程，点击右上角「新建课程」开始添加
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[60px]">封面</TableHead>
+                      <TableHead className="min-w-[180px]">标题</TableHead>
+                      <TableHead className="min-w-[80px]">分类</TableHead>
+                      <TableHead className="min-w-[80px]">难度</TableHead>
+                      <TableHead className="min-w-[90px]">价格</TableHead>
+                      <TableHead className="min-w-[70px]">学员</TableHead>
+                      <TableHead className="min-w-[60px]">精选</TableHead>
+                      <TableHead className="min-w-[120px] text-right">
+                        操作
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {courses.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell>
+                          <div className="relative h-10 w-14 overflow-hidden rounded-md bg-muted">
+                            <img
+                              src={c.coverImage}
+                              alt={c.title}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[260px]">
+                            <div className="truncate font-medium">
+                              {c.title}
+                            </div>
+                            {c.subtitle && (
+                              <div className="truncate text-[11px] text-muted-foreground">
+                                {c.subtitle}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="font-normal">
+                            {c.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              "rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+                              LEVEL_STYLE[c.level] ||
+                                "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {c.level}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {c.isFree ? (
+                            <span className="text-sm font-semibold text-emerald-600">
+                              免费
+                            </span>
+                          ) : (
+                            <span className="text-sm font-semibold text-primary">
+                              ¥{c.price}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="flex items-center gap-1 text-sm">
+                            <Users className="h-3 w-3 text-muted-foreground" />
+                            {c.studentsCount.toLocaleString()}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {c.isFeatured ? (
+                            <Crown className="h-4 w-4 text-accent" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openEdit(c)}
+                              aria-label="编辑"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteTarget(c)}
+                              aria-label="删除"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? "编辑课程" : "新建课程"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingId
+                ? "修改课程信息后点击保存"
+                : "填写课程基本信息，提交后立即上架"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="f-title">
+                标题 <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="f-title"
+                value={form.title}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
+                placeholder="例如：抖音电影解说 · 从 0 到百万播放"
+              />
+            </div>
+
+            {/* Subtitle */}
+            <div className="space-y-2">
+              <Label htmlFor="f-subtitle">副标题</Label>
+              <Input
+                id="f-subtitle"
+                value={form.subtitle}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, subtitle: e.target.value }))
+                }
+                placeholder="一句话点明课程卖点"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="f-desc">
+                描述 <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="f-desc"
+                value={form.description}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
+                placeholder="详细介绍课程内容、适合人群、学习收获等"
+                rows={4}
+              />
+            </div>
+
+            {/* Cover */}
+            <div className="space-y-2">
+              <Label>封面图</Label>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {COVER_PRESETS.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({ ...f, coverImage: url }))
+                    }
+                    className={cn(
+                      "relative aspect-[4/3] overflow-hidden rounded-md border-2 transition-all",
+                      form.coverImage === url
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-transparent opacity-70 hover:opacity-100"
+                    )}
+                  >
+                    <img
+                      src={url}
+                      alt={url}
+                      className="h-full w-full object-cover"
+                    />
+                    {form.coverImage === url && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-primary/30">
+                        <ImageIcon className="h-5 w-5 text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={form.coverImage}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, coverImage: e.target.value }))
+                }
+                placeholder="或输入自定义封面 URL"
+                className="text-xs"
+              />
+            </div>
+
+            {/* Category + Level */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>分类</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, category: v }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>难度</Label>
+                <Select
+                  value={form.level}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, level: v }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEVELS.map((l) => (
+                      <SelectItem key={l} value={l}>
+                        {l}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Price + Original */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="f-price">价格 (¥)</Label>
+                <Input
+                  id="f-price"
+                  type="number"
+                  min="0"
+                  value={form.price}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, price: e.target.value }))
+                  }
+                  disabled={form.isFree}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="f-orig">原价 (¥, 可选)</Label>
+                <Input
+                  id="f-orig"
+                  type="number"
+                  min="0"
+                  value={form.originalPrice}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, originalPrice: e.target.value }))
+                  }
+                  disabled={form.isFree}
+                  placeholder="用于显示划线价"
+                />
+              </div>
+            </div>
+
+            {/* Switches */}
+            <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="f-free" className="cursor-pointer">
+                    免费课程
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    开启后价格自动置 0
+                  </p>
+                </div>
+                <Switch
+                  id="f-free"
+                  checked={form.isFree}
+                  onCheckedChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      isFree: v,
+                      price: v ? "0" : f.price,
+                    }))
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="f-featured" className="cursor-pointer">
+                    <Star className="mr-1 inline h-3.5 w-3.5 text-accent" />
+                    精选推荐
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    显示在首页精选区
+                  </p>
+                </div>
+                <Switch
+                  id="f-featured"
+                  checked={form.isFeatured}
+                  onCheckedChange={(v) =>
+                    setForm((f) => ({ ...f, isFeatured: v }))
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Instructor */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="f-instructor">讲师</Label>
+                <Input
+                  id="f-instructor"
+                  value={form.instructor}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, instructor: e.target.value }))
+                  }
+                  placeholder="例如：老陈 · 影视赛道千万粉博主"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="f-instructor-bio">讲师简介</Label>
+                <Input
+                  id="f-instructor-bio"
+                  value={form.instructorBio}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      instructorBio: e.target.value,
+                    }))
+                  }
+                  placeholder="一句话介绍讲师背景"
+                />
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2">
+              <Label htmlFor="f-tags">标签</Label>
+              <Input
+                id="f-tags"
+                value={form.tags}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, tags: e.target.value }))
+                }
+                placeholder="逗号分隔，例如：悬疑, 爆款, 完播率"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                用中文或英文逗号分隔多个标签
+              </p>
+            </div>
+
+            {/* Highlights */}
+            <div className="space-y-2">
+              <Label htmlFor="f-highlights">课程亮点</Label>
+              <Textarea
+                id="f-highlights"
+                value={form.highlights}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, highlights: e.target.value }))
+                }
+                placeholder="每行一条，例如：&#10;AI 文案工具永久免费&#10;6 年赛道操盘经验沉淀"
+                rows={3}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                每行一条亮点，会展示在课程详情页
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={saving}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-gradient-to-r from-primary to-accent text-primary-foreground"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  保存中…
+                </>
+              ) : (
+                <>{editingId ? "保存修改" : "创建课程"}</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              确认删除课程
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除「{deleteTarget?.title}」吗？该操作会同时删除其下所有课时与报名记录，且不可恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  删除中…
+                </>
+              ) : (
+                "确认删除"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
