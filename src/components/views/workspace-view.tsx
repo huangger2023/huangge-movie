@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Search,
   Filter,
+  CopyPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
@@ -35,6 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -113,6 +115,7 @@ export function WorkspaceView() {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  const [duplicateId, setDuplicateId] = React.useState<string | null>(null);
 
   // 筛选 / 搜索 / 排序
   const [search, setSearch] = React.useState("");
@@ -477,15 +480,28 @@ export function WorkspaceView() {
                         <Clock className="h-3 w-3" />
                         {formatTime(ws.updatedAt)}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteId(ws.id);
-                        }}
-                        className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDuplicateId(ws.id);
+                          }}
+                          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                          title="复制为新项目"
+                        >
+                          <CopyPlus className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(ws.id);
+                          }}
+                          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          title="删除项目"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -537,6 +553,33 @@ export function WorkspaceView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 复制为新项目 Dialog */}
+      <Dialog open={!!duplicateId} onOpenChange={(v) => !v && setDuplicateId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CopyPlus className="h-4 w-4 text-primary" />
+              复制为新项目
+            </DialogTitle>
+            <DialogDescription>
+              基于现有项目创建新项目，电影名和创作内容将被复制（状态重置为草稿）。
+            </DialogDescription>
+          </DialogHeader>
+          {duplicateId && (
+            <DuplicateForm
+              sourceId={duplicateId}
+              sourceTitle={workspaces.find((w) => w.id === duplicateId)?.movieTitle || ""}
+              onCreated={(ws) => {
+                setWorkspaces((prev) => [{ ...ws, progress: 0 }, ...prev]);
+                setDuplicateId(null);
+                toast.success("项目已复制");
+              }}
+              onCancel={() => setDuplicateId(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -544,6 +587,135 @@ export function WorkspaceView() {
 function calcProgress(w: { script?: string | null; titles?: string | null; hooks?: string | null; storyboard?: string | null }) {
   const filled = [w.script, w.titles, w.hooks, w.storyboard].filter((x) => x && x.trim().length > 0).length;
   return Math.round((filled / 4) * 100);
+}
+
+function DuplicateForm({
+  sourceId,
+  sourceTitle,
+  onCreated,
+  onCancel,
+}: {
+  sourceId: string;
+  sourceTitle: string;
+  onCreated: (ws: WorkspaceItem) => void;
+  onCancel: () => void;
+}) {
+  const [newTitle, setNewTitle] = React.useState(sourceTitle);
+  const [copyContent, setCopyContent] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+
+  const handleDuplicate = async () => {
+    if (!newTitle.trim()) {
+      toast.error("请填写新电影名称");
+      return;
+    }
+    setSaving(true);
+    try {
+      // 1. 先获取源项目完整内容
+      const sourceRes = await fetch("/api/workspaces");
+      const sourceData = (await sourceRes.json()) as { workspaces: WorkspaceItem[] };
+      const source = sourceData.workspaces.find((w) => w.id === sourceId);
+      if (!source) throw new Error("源项目不存在");
+
+      // 2. 创建新项目
+      const createRes = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          movieTitle: newTitle.trim(),
+          genre: source.genre,
+          coverColor: source.coverColor,
+        }),
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "创建失败");
+      const newWs = createData.workspace as { id: string };
+
+      // 3. 如果勾选复制内容，写入字段
+      if (copyContent) {
+        const patchFields: Record<string, string> = {};
+        if (source.script) patchFields.script = source.script;
+        if (source.titles) patchFields.titles = source.titles;
+        if (source.hooks) patchFields.hooks = source.hooks;
+        if (source.storyboard) patchFields.storyboard = source.storyboard;
+        if (source.notes) patchFields.notes = source.notes;
+        if (Object.keys(patchFields).length > 0) {
+          const patchRes = await fetch(`/api/workspaces/${newWs.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: newWs.id, ...patchFields }),
+          });
+          if (!patchRes.ok) throw new Error("复制内容失败");
+        }
+      }
+
+      onCreated({
+        ...newWs,
+        movieTitle: newTitle.trim(),
+        genre: source.genre,
+        coverColor: source.coverColor,
+        status: "draft",
+        script: copyContent ? source.script : null,
+        titles: copyContent ? source.titles : null,
+        hooks: copyContent ? source.hooks : null,
+        storyboard: copyContent ? source.storyboard : null,
+        notes: copyContent ? source.notes : null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        progress: copyContent ? calcProgress(source) : 0,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "复制失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 py-2">
+      <div className="space-y-1.5">
+        <Label>新电影名称</Label>
+        <Input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="输入新电影名"
+          autoFocus
+          onKeyDown={(e) => e.key === "Enter" && handleDuplicate()}
+        />
+      </div>
+      <div className="flex items-center gap-2.5">
+        <Switch
+          checked={copyContent}
+          onCheckedChange={setCopyContent}
+        />
+        <div>
+          <p className="text-sm font-medium">复制创作内容</p>
+          <p className="text-[11px] text-muted-foreground">
+            {copyContent ? "文案、标题、开头、分镜、笔记将一并复制" : "仅复制类型和主题色，内容留空"}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 rounded-lg bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+        <CopyPlus className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span>
+          源项目「{sourceTitle}」→ 新项目「{newTitle || "未命名"}」，状态重置为草稿
+        </span>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel} disabled={saving}>
+          取消
+        </Button>
+        <Button
+          onClick={handleDuplicate}
+          disabled={saving || !newTitle.trim()}
+          className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+        >
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />}
+          {saving ? "复制中…" : "创建副本"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function CreateWorkspaceDialog({

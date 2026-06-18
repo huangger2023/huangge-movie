@@ -156,6 +156,44 @@ export function HomeView() {
       .catch(() => {});
   }, []);
 
+  // 数字滚动动画
+  const AnimatedNumber = ({ value, duration = 1200 }: { value: string; duration?: number }) => {
+    const [display, setDisplay] = React.useState("0");
+    const numericVal = parseFloat(value.replace(/,/g, ""));
+    const isFloat = value.includes(".");
+    const hasComma = value.includes(",");
+
+    React.useEffect(() => {
+      if (isNaN(numericVal)) {
+        setDisplay(value);
+        return;
+      }
+      const start = performance.now();
+
+      const animate = (now: number) => {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutExpo
+        const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        const current = numericVal * eased;
+        let formatted: string;
+        if (isFloat) {
+          formatted = current.toFixed(1);
+        } else {
+          formatted = Math.round(current).toString();
+        }
+        if (hasComma) {
+          formatted = Number(formatted).toLocaleString();
+        }
+        setDisplay(formatted);
+        if (progress < 1) requestAnimationFrame(animate);
+      };
+      requestAnimationFrame(animate);
+    }, [value, numericVal, duration, isFloat, hasComma]);
+
+    return <span>{display}</span>;
+  };
+
   const liveStats = React.useMemo(() => {
     if (!stats) return null;
     return [
@@ -192,6 +230,12 @@ export function HomeView() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-cinema-radial" />
         <div className="absolute inset-0 bg-grid-faint opacity-40" />
+        {/* 浮光粒子效果 */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute left-1/4 top-1/4 h-64 w-64 rounded-full bg-primary/8 blur-[100px] animate-pulse" />
+          <div className="absolute right-1/4 bottom-1/3 h-48 w-48 rounded-full bg-accent/8 blur-[80px] animate-pulse [animation-delay:1.5s]" />
+          <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[60px] animate-pulse [animation-delay:3s]" />
+        </div>
         {/* Hero bg image */}
         <div className="pointer-events-none absolute inset-0">
           { }
@@ -283,11 +327,11 @@ export function HomeView() {
             {(liveStats || []).map((s) => (
               <div
                 key={s.label}
-                className="glass-card rounded-2xl border border-border/60 p-5 text-center"
+                className="glass-card rounded-2xl border border-border/60 p-5 text-center transition-all hover:border-primary/30 hover:shadow-glow-primary"
               >
                 <s.icon className="mx-auto mb-2 h-5 w-5 text-primary" />
                 <div className="text-2xl font-bold tracking-tight">
-                  {s.value}
+                  <AnimatedNumber value={s.value} />
                   <span className="ml-0.5 text-sm font-normal text-muted-foreground">
                     {s.suffix}
                   </span>

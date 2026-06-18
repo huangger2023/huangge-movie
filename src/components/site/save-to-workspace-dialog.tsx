@@ -155,9 +155,26 @@ export function SaveToWorkspaceDialog({
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return workspaces;
-    return workspaces.filter((w) => w.movieTitle.toLowerCase().includes(q));
-  }, [workspaces, search]);
+    let list = workspaces;
+    if (q) list = list.filter((w) => w.movieTitle.toLowerCase().includes(q));
+    // 同名项目排最前（按 defaultMovieTitle 匹配）
+    const movieKey = defaultMovieTitle.trim().toLowerCase();
+    if (movieKey && !q) {
+      list = [...list].sort((a, b) => {
+        const aMatch = a.movieTitle.toLowerCase() === movieKey ? 0 : a.movieTitle.toLowerCase().includes(movieKey) ? 1 : 2;
+        const bMatch = b.movieTitle.toLowerCase() === movieKey ? 0 : b.movieTitle.toLowerCase().includes(movieKey) ? 1 : 2;
+        return aMatch - bMatch;
+      });
+    }
+    return list;
+  }, [workspaces, search, defaultMovieTitle]);
+
+  // 是否有同名项目（精确匹配）
+  const matchedWorkspace = React.useMemo(() => {
+    const movieKey = defaultMovieTitle.trim().toLowerCase();
+    if (!movieKey) return null;
+    return workspaces.find((w) => w.movieTitle.toLowerCase() === movieKey) || null;
+  }, [workspaces, defaultMovieTitle]);
 
   const handleSave = async (ws: WorkspaceItem) => {
     if (!value.trim()) {
@@ -255,6 +272,9 @@ export function SaveToWorkspaceDialog({
             {value.length > 0 && (
               <span className="ml-1 text-primary">· 共 {value.length} 字</span>
             )}
+            {matchedWorkspace && (
+              <span className="ml-1 text-emerald-600 dark:text-emerald-400">· 已找到同名项目「{matchedWorkspace.movieTitle}」</span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -309,6 +329,7 @@ export function SaveToWorkspaceDialog({
                     const coverColor =
                       COVER_COLORS.find((c) => c.id === ws.coverColor) ||
                       COVER_COLORS[0];
+                    const isMatched = matchedWorkspace?.id === ws.id;
                     return (
                       <motion.div
                         key={ws.id}
@@ -320,12 +341,21 @@ export function SaveToWorkspaceDialog({
                         <Card
                           className={cn(
                             "group relative cursor-pointer overflow-hidden p-3 transition-all hover:border-primary/40 hover:shadow-glow-primary",
+                            isMatched && "border-primary/50 ring-1 ring-primary/20",
                             savingId === ws.id && "border-primary/60 ring-1 ring-primary/30"
                           )}
                           onClick={() =>
                             savingId !== ws.id && handleSave(ws)
                           }
                         >
+                          {isMatched && (
+                            <div className="absolute right-2 top-2">
+                              <Badge className="bg-primary/15 text-primary hover:bg-primary/15 text-[9px] gap-0.5 px-1.5 py-0.5">
+                                <Sparkles className="h-2.5 w-2.5" />
+                                推荐
+                              </Badge>
+                            </div>
+                          )}
                           <div className="flex items-center gap-3">
                             <div
                               className={cn(

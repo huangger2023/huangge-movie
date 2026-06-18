@@ -584,3 +584,81 @@ Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
 - 学员：demo@yingshu.com / 123456
 - dev server：http://localhost:3000，lint 0 errors
 - 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）
+
+---
+Task ID: 13 (cron 巡检轮 · 存入自动匹配 + 复制项目 + 导出对话 + 首页打磨)
+Agent: 主控 Agent (Z.ai Code) — cron 触发的 webDevReview
+
+## 项目当前状态判断
+项目稳定。dev log 健康，lint 0 errors。上轮完成的存入工作台/AI助教清除历史/工作台增强全部正常运作。本轮重点是体验细节打磨和新功能。
+
+## 本轮工作
+
+### QA 测试 (agent-browser)
+- 首页/课程中心/AI文案生成/创作工具箱/创作工作台/我的学习 全部正常，无 console error
+- 发现首页 AnimatedNumber 组件运行时报错 `isFloat is not defined`（useEffect deps 引用了 useEffect 内部声明的变量），已修复：将变量声明移至 useEffect 外部
+- 工作台统计/搜索/筛选/排序全部可用
+
+### 新需求1：存入工作台自动匹配同名电影项目
+**痛点**：用户生成「盗梦空间」的标题后存入工作台，还需从列表手动找同名项目，体验不佳。
+**实现** (save-to-workspace-dialog.tsx)：
+- filtered 排序逻辑：当 `defaultMovieTitle` 有值且用户未手动搜索时，同名项目排最前（精确匹配 > 包含匹配 > 其他）
+- 新增 `matchedWorkspace` memo：精确匹配同名项目
+- 同名项目加「推荐」badge（Sparkles 图标 + 玫瑰色）+ 高亮边框（border-primary/50 ring-1 ring-primary/20）
+- Dialog 描述区新增：匹配到同名项目时显示「已找到同名项目『电影名』」绿色提示
+
+### 新需求2：工作台项目「复制为新项目」功能
+**痛点**：用户做漫威系列/诺兰系列时，想基于已有项目快速创建新项目（类型、风格、模板一致）。
+**实现** (workspace-view.tsx)：
+- 卡片底部操作栏新增「复制为新项目」按钮（CopyPlus 图标），hover 时显示
+- DuplicateForm 组件（嵌入 Dialog）：
+  - 新电影名输入框（预填源项目名）
+  - Switch 开关：是否复制创作内容（文案/标题/开头/分镜/笔记）
+  - 源→目标提示条：「源项目『盗梦空间』→ 新项目『星际穿越』，状态重置为草稿」
+  - 创建流程：POST 新项目 → PATCH 写入字段（如勾选复制内容）
+- 操作按钮改为两个按钮（复制 + 删除），hover 时整体显示
+
+### 新需求3：AI 助教导出对话为 Markdown
+**痛点**：学员想保存助教答疑内容用于复习，但目前只能在页面查看。
+**实现** (course-detail-view.tsx)：
+- `handleExportChat` 函数：生成包含课程名/课时名/导出时间/对话条数的 Markdown 文件
+- 每条对话以 `### 🙋 学员` / `### 🤖 AI 助教` 标题区分
+- Blob 下载为 `.md` 文件，文件名含课时标题
+- 导出按钮（Download 图标）在清除历史按钮旁边，仅 messages.length > 0 时显示
+
+### 新需求4：首页样式细节打磨
+**痛点**：首页统计数字直接显示，缺少视觉冲击力；Hero 区域缺乏深度感。
+**实现** (home-view.tsx)：
+- **AnimatedNumber 组件**：数字从 0 滚动到目标值，使用 easeOutExpo 缓动，支持整数/小数/逗号分隔
+- **Hero 浮光效果**：3 个不同大小的 blur 圆形光斑（primary/accent 色），错时 animate-pulse，营造电影氛围感
+- **统计卡片 hover**：hover 时 border-primary/30 + shadow-glow-primary 微交互
+
+### 修复的 bug
+- AnimatedNumber `isFloat is not defined` 运行时错误：useEffect deps 引用了 useEffect 内部的变量声明，移至外部后修复
+
+## 验证结果 (agent-browser)
+- **存入工作台自动匹配**：生成盗梦空间标题 → 点存入工作台 → dialog 显示「已找到同名项目『盗梦空间』」→ 同名项目排最前 + 推荐标签 ✓
+- **复制为新项目**：点复制按钮 → Dialog 显示 → 改名为「星际穿越」→ 创建副本 → 工作台显示 2 个项目 + 统计「2 项目/1 进行中/0 已完成/1748 字」✓
+- **AI 助教导出**：提问后 → 导出按钮显示 → 点击导出 → 触发浏览器下载 .md 文件（无报错）✓
+- **首页数字动画**：统计数字从 0 滚动到实际值（easeOutExpo 缓动）✓
+- **首页浮光效果**：3 个光斑错时脉冲 ✓
+- **lint 0 errors**
+
+## 未解决问题/风险
+- 课程 videoUrl 仍为 null
+- 联网搜索 12.6s 仍偏慢
+- 复制项目时获取源项目内容需额外一次 fetch（可优化为后端 API 直接复制）
+
+## 建议下一阶段优先事项
+1. 工作台编辑器加「从其他项目导入」功能（把 A 项目的标题导入 B 项目）
+2. 首页加「学习路径」交互式路线图（可点击跳转对应课程）
+3. 课程详情页加视频播放器支持
+4. 联网搜索改 SSE 流式返回
+5. 管理后台增强：课时内容编辑器（富文本）
+6. 工作台批量操作（多选删除/批量改状态）
+
+## 测试账号
+- 管理员：admin@yingshu.com / admin123
+- 学员：demo@yingshu.com / 123456
+- dev server：http://localhost:3000，lint 0 errors
+- 定时任务：webDevReview 每15分钟自动巡检（job_id: 213591）

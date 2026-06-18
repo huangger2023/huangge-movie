@@ -26,6 +26,7 @@ import {
   MessageSquare,
   X,
   Trash2,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -768,6 +769,34 @@ function LessonAssistant({
     }
   };
 
+  const handleExportChat = () => {
+    if (messages.length === 0) return;
+    const lines = [
+      `# AI 课程助教对话记录`,
+      ``,
+      `**课程**：${courseTitle}`,
+      `**课时**：${lesson.title}`,
+      `**导出时间**：${new Date().toLocaleString("zh-CN")}`,
+      `**对话条数**：${messages.length}`,
+      ``,
+      `---`,
+      ``,
+    ];
+    for (const m of messages) {
+      const role = m.role === "user" ? "🙋 学员" : "🤖 AI 助教";
+      lines.push(`### ${role}`, ``, m.content, ``, `---`, ``);
+    }
+    const md = lines.join("\n");
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `助教对话-${lesson.title}-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("对话已导出为 Markdown");
+  };
+
   return (
     <div className="mt-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/[0.04] to-accent/[0.04] p-3">
       {/* 助教标题栏 */}
@@ -792,9 +821,20 @@ function LessonAssistant({
           )}
         </button>
         {open && messages.length > 0 && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
+          <div className="flex items-center gap-0.5">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleExportChat}
+              className="h-7 gap-1 px-2 text-[11px] text-muted-foreground hover:text-primary"
+              title="导出对话为 Markdown 文件"
+            >
+              <Download className="h-3 w-3" />
+              <span className="hidden sm:inline">导出</span>
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
                 size="sm"
                 variant="ghost"
                 disabled={clearing}
@@ -835,6 +875,7 @@ function LessonAssistant({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          </div>
         )}
       </div>
 
