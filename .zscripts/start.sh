@@ -53,8 +53,13 @@ cd "$BUILD_DIR" || exit 1
 
 ls -lah
 
-DEFAULT_PACKAGED_DB_PATH="/app/db/custom.db"
-DEFAULT_PACKAGED_DATABASE_URL="file:$DEFAULT_PACKAGED_DB_PATH"
+# 数据库已迁移到 Turso(libSQL)，运行时需 TURSO_DATABASE_URL + TURSO_AUTH_TOKEN。
+# 不再使用打包的 SQLite 文件。
+if [ -z "$TURSO_DATABASE_URL" ]; then
+    echo "❌ 未设置 TURSO_DATABASE_URL 环境变量，无法连接 Turso 数据库，启动终止"
+    exit 1
+fi
+echo "🗄️  连接 Turso 数据库: $TURSO_DATABASE_URL"
 
 # 启动 Next.js 服务器
 if [ -f "./next-service-dist/server.js" ]; then
@@ -65,19 +70,6 @@ if [ -f "./next-service-dist/server.js" ]; then
     export NODE_ENV=production
     export PORT="${PORT:-3000}"
     export HOSTNAME="${HOSTNAME:-0.0.0.0}"
-    export DATABASE_URL="${DATABASE_URL:-$DEFAULT_PACKAGED_DATABASE_URL}"
-
-    if [ "$DATABASE_URL" = "$DEFAULT_PACKAGED_DATABASE_URL" ]; then
-        if [ ! -f "$DEFAULT_PACKAGED_DB_PATH" ]; then
-            echo "❌ 未找到打包后的数据库文件 $DEFAULT_PACKAGED_DB_PATH"
-            echo "   为避免生产环境启动到空数据库，启动已终止"
-            exit 1
-        fi
-
-        echo "🗄️  当前使用打包数据库: $DEFAULT_PACKAGED_DB_PATH"
-    else
-        echo "🗄️  当前使用外部指定数据库: $DATABASE_URL"
-    fi
     
     # 后台启动 Next.js
     bun server.js &

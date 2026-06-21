@@ -2,7 +2,8 @@
 // 抖音电影解说知识付费平台
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
