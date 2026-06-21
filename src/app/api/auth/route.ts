@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     console.error("auth error", e);
-    return NextResponse.json({ error: "登录失败", detail: e instanceof Error ? e.message : String(e) }, { status: 500 });
+    return NextResponse.json({ error: "登录失败" }, { status: 500 });
   }
 }
 
