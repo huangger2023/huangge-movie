@@ -3,30 +3,18 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import {
-  Search,
-  Sparkles,
-  ArrowRight,
-  Film,
-  BookOpen,
-  GraduationCap,
-  Compass,
-  X,
-} from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CourseCard, type CourseItem } from "@/components/site/course-card";
-import { useAppStore } from "@/lib/store";
+import { ScribbleUnderline } from "@/components/site/illustrations";
 import { cn } from "@/lib/utils";
 
-const CATEGORIES = ["全部", "入门", "进阶", "实战", "高阶", "运营"];
+const CATEGORIES = ["全部", "小白", "爆款", "精选"];
 const LEVELS = ["全部", "初级", "中级", "高级"];
 
 export function CoursesView() {
-  const setView = useAppStore((s) => s.setView);
   const [category, setCategory] = React.useState("全部");
   const [level, setLevel] = React.useState("全部");
   const [searchInput, setSearchInput] = React.useState("");
@@ -34,20 +22,19 @@ export function CoursesView() {
   const [courses, setCourses] = React.useState<CourseItem[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  // Debounce search input -> search query
   React.useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Fetch courses when filters change
   React.useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     const params = new URLSearchParams();
     if (category !== "全部") params.set("category", category);
     if (level !== "全部") params.set("level", level);
     if (search) params.set("search", search);
+
+    setLoading(true);
     fetch(`/api/courses?${params.toString()}`)
       .then((r) => r.json())
       .then((d) => {
@@ -62,220 +49,154 @@ export function CoursesView() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
   }, [category, level, search]);
 
-  const hasActiveFilters =
-    category !== "全部" || level !== "全部" || search !== "";
+  const hasActiveFilters = category !== "全部" || level !== "全部" || search !== "";
 
-  const clearFilters = () => {
+  function clearFilters() {
     setCategory("全部");
     setLevel("全部");
     setSearchInput("");
-  };
+  }
 
   return (
-    <div className="relative">
-      <div className="pointer-events-none absolute inset-0 bg-cinema-radial" />
-      <div className="pointer-events-none absolute inset-0 bg-grid-faint opacity-30" />
+    <div className="relative min-h-screen">
+      <div className="absolute inset-0 code-bg opacity-50" aria-hidden="true" />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        {/* Header */}
+      <div className="container-page relative pt-12 pb-20 lg:pt-16">
+        {/* —— 页头 —— */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mx-auto max-w-2xl text-center"
+          transition={{ duration: 0.45 }}
         >
-          <Badge
-            variant="outline"
-            className="mb-4 gap-1.5 border-primary/30 bg-primary/10 px-3 py-1 text-primary"
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            系统课程 · 真实操盘
-          </Badge>
-          <h1 className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
-            课程<span className="text-gradient-primary">中心</span>
+          <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+            / courses · 三阶段课程目录
+          </div>
+          <h1 className="font-display mt-3 text-balance text-[40px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[60px]">
+            <span className="relative inline-block">
+              选阶段
+              <ScribbleUnderline className="absolute -bottom-1 left-0 right-0 text-amber-400/85" />
+            </span>
+            ，再开始写
           </h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            从零基础入门到高阶运营变现，覆盖电影解说创作全链路的系统课程
+          <p className="mt-5 max-w-2xl text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
+            课程按小白、爆款、精选三阶段展开，每节课对应生成器里的同一套方法。
           </p>
         </motion.div>
-
-        {/* Learning path banner */}
+        {/* —— 筛选面板：控制台风 —— */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.1 }}
-          className="mt-8"
+          transition={{ duration: 0.45, delay: 0.12 }}
+          className="mt-10 rounded-[2px] border border-border bg-card/40 backdrop-blur-sm"
         >
-          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-accent/5">
-            <div className="flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-glow-primary">
-                <Compass className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-base font-semibold">
-                  不知道从哪里开始？
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  试试 AI 文案生成器，10 分钟产出你的第一条爆款解说文案，边练边学更快上手。
-                </p>
-              </div>
-              <Button
-                onClick={() => setView("script-generator")}
-                className="shrink-0 bg-gradient-to-r from-primary to-accent text-primary-foreground"
-              >
-                <Sparkles className="h-4 w-4" />
-                立即体验
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.15 }}
-          className="mt-8 space-y-4"
-        >
-          {/* Category chips */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <GraduationCap className="h-3.5 w-3.5" />
-              分类
-            </span>
-            {CATEGORIES.map((c) => (
-              <Chip
-                key={c}
-                active={category === c}
-                onClick={() => setCategory(c)}
-              >
-                {c}
-              </Chip>
-            ))}
-          </div>
-
-          {/* Level chips */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-medium text-muted-foreground">
-              难度
-            </span>
-            {LEVELS.map((l) => (
-              <Chip
-                key={l}
-                active={level === l}
-                onClick={() => setLevel(l)}
-              >
-                {l}
-              </Chip>
-            ))}
-          </div>
-
-          {/* Search */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="搜索课程名称、讲师…"
-                className="pl-9"
-              />
-              {searchInput && (
+          <div className="flex items-center justify-between border-b border-border/70 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+            <span>filter · 筛选条件</span>
+            <span>
+              {loading ? "loading…" : `${courses.length} matched`}
+              {hasActiveFilters && (
                 <button
                   type="button"
-                  onClick={() => setSearchInput("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="清除搜索"
+                  onClick={clearFilters}
+                  className="ml-3 inline-flex items-center gap-1 normal-case text-foreground/80 hover:text-primary"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-3 w-3" /> 清空
                 </button>
               )}
-            </div>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="shrink-0 gap-1.5 text-muted-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-                清除筛选
-              </Button>
-            )}
+            </span>
+          </div>
+
+          <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+            <FilterRow label="STAGE">
+              {CATEGORIES.map((item) => (
+                <Chip
+                  key={item}
+                  active={category === item}
+                  onClick={() => setCategory(item)}
+                >
+                  {item}
+                </Chip>
+              ))}
+            </FilterRow>
+
+            <FilterRow label="LEVEL">
+              {LEVELS.map((item) => (
+                <Chip
+                  key={item}
+                  active={level === item}
+                  onClick={() => setLevel(item)}
+                >
+                  {item}
+                </Chip>
+              ))}
+            </FilterRow>
+
+            <FilterRow label="QUERY">
+              <div className="relative w-full sm:max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="搜索课程标题、重点、讲师…"
+                  className="rounded-[2px] border-border/70 pl-9 font-mono text-[12px]"
+                />
+                {searchInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="清空搜索"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+            </FilterRow>
           </div>
         </motion.div>
-
-        {/* Count */}
-        <div className="mt-6 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {loading ? (
-              "加载中…"
-            ) : (
-              <>
-                共 <span className="font-semibold text-foreground">{courses.length}</span>{" "}
-                门课程
-              </>
-            )}
-          </p>
-        </div>
-
-        {/* Grid */}
-        <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {/* —— 课程网格 —— */}
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="space-y-3">
-                <Skeleton className="aspect-[4/3] w-full rounded-xl" />
+                <Skeleton className="aspect-[3/2] w-full rounded-[2px]" />
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-2/3" />
-                <div className="flex justify-between pt-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-5 w-16" />
-                </div>
               </div>
             ))
           ) : courses.length === 0 ? (
-            <div className="col-span-full">
-              <Card className="flex flex-col items-center justify-center gap-4 border-dashed px-6 py-16 text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/60">
-                  <Film className="h-9 w-9 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold">
-                    没有找到相关课程
-                  </p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    {hasActiveFilters
-                      ? "试试调整筛选条件，或换个关键词搜索"
-                      : "敬请期待，新课程正在筹备中"}
-                  </p>
-                </div>
-                {hasActiveFilters && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="mt-1 gap-1.5"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    清除全部筛选
-                  </Button>
-                )}
-              </Card>
+            <div className="col-span-full rounded-[2px] border border-dashed border-border bg-card/40 px-6 py-20 text-center">
+              <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                no result · 没找到匹配课程
+              </div>
+              <p className="font-display mt-3 text-[24px] font-bold tracking-tight">
+                试试换个阶段、难度或关键词
+              </p>
+              {hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="mt-6 gap-1.5 rounded-[2px]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  清空全部筛选
+                </Button>
+              ) : null}
             </div>
           ) : (
             courses.map((course, i) => (
               <motion.div
                 key={course.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: Math.min(i * 0.05, 0.4) }}
+                transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.3) }}
               >
                 <CourseCard course={course} />
               </motion.div>
@@ -283,6 +204,23 @@ export function CoursesView() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground sm:w-16 sm:shrink-0">
+        {label}
+      </div>
+      <div className="flex flex-1 flex-wrap items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -301,10 +239,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
+        "rounded-[2px] border px-3 py-1 text-[12px] font-medium transition-all",
         active
-          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30"
-          : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+          ? "border-foreground bg-foreground/10 text-foreground"
+          : "border-border/70 bg-transparent text-muted-foreground hover:border-foreground/40 hover:text-foreground"
       )}
     >
       {children}
